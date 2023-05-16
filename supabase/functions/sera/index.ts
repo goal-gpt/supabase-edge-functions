@@ -5,10 +5,13 @@ import { corsHeaders } from "../_shared/cors.ts";
 
 serve(async (request: Request) => {
   if (request.method === "OPTIONS") {
+    console.log("Handling CORS preflight request.");
     return new Response("ok", { headers: corsHeaders });
   }
 
-  const { query } = await request.json()
+  console.log("Handling request.");
+  console.log(request);
+  // const { query } = await request.json()
 
   const llm = new OpenAI({
     temperature: 0,
@@ -16,5 +19,5 @@ serve(async (request: Request) => {
     verbose: true,
   });
 
-  return await answerQuery(llm, query);
+  return await answerQuery(llm, "How do I save money?");
 });
