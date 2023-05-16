@@ -1,4 +1,4 @@
-# langchain-template-supabase > supabase
+# supabase-edge-functions > supabase
 
 To invoke the function locally
 
