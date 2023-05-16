@@ -1,8 +1,13 @@
 import { serve } from "http/server.ts";
 import { answerQuery } from "./answerQuery.ts";
 import { OpenAI } from "langchain/llms/openai";
+import { corsHeaders } from "../_shared/cors.ts";
 
 serve(async (request: Request) => {
+  if (request.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
   const { query } = await request.json()
 
   const llm = new OpenAI({
