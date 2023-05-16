@@ -10,8 +10,7 @@ serve(async (request: Request) => {
   }
 
   console.log("Handling request.");
-  console.log(request);
-  // const { query } = await request.json()
+  const { query } = await request.json()
 
   const llm = new OpenAI({
     temperature: 0,
@@ -19,5 +18,5 @@ serve(async (request: Request) => {
     verbose: true,
   });
 
-  return await answerQuery(llm, "How do I save money?");
+  return await answerQuery(llm, query);
 });
