@@ -10,7 +10,7 @@ serve(async (request: Request) => {
   }
 
   console.log("Handling request.");
-  const { query } = await request.json()
+  const { query } = await request.json();
 
   const llm = new OpenAI({
     openAIApiKey: Deno.env.get("OPENAI_API_KEY"),
