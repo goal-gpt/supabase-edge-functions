@@ -13,6 +13,7 @@ serve(async (request: Request) => {
   const { query } = await request.json()
 
   const llm = new OpenAI({
+    openAIApiKey: Deno.env.get("OPENAI_API_KEY"),
     temperature: 0,
     modelName: "gpt-3.5-turbo",
     verbose: true,
