@@ -25,6 +25,10 @@ jobs:
         run: |
           echo "${{ secrets.SUPABASE_ENV_FILE }}" > .env
       
+      - name: 'Create link to Supabase project'
+        run: |
+          supabase link --project-ref $SUPABASE_PROJECT_ID --password ""
+      
       - name: 'Set Supabase .env file'
         run: |
           supabase secrets set --env-file .env
