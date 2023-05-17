@@ -12,6 +12,7 @@ jobs:
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+      SUPABASE_ENV_FILE: ${{ secrets.SUPABASE_ENV_FILE }}
 
     steps:
       - uses: actions/checkout@v3
@@ -20,4 +21,14 @@ jobs:
         with:
           version: latest
 
-      - run: supabase functions deploy sera --project-ref $SUPABASE_PROJECT_ID
+      - name: 'Create Supabase env file'
+        run: |
+          echo "${{ secrets.SUPABASE_ENV_FILE }}" > .env
+      
+      - name: 'Set Supabase .env file'
+        run: |
+          supabase secrets set --env-file .env
+      
+      - name: 'Deploy Sera on Supabase'
+        run: |
+          supabase functions deploy sera --project-ref $SUPABASE_PROJECT_ID
