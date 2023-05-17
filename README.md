@@ -32,3 +32,10 @@ npx supabase start
 ```bash
 yarn supabase:dev
 ```
+
+## Continuous Deployment
+A GitHub Action deploys this repo's functions to Supabase when committed to `main`. To successfully deploy, the GitHub Action uses the following three secrets that are stored encrypted in the GitHub Secrets for this repo: `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_ID`, and `SUPABASE_ENV_FILE`.
+
+The values for `SUPABASE_ACCESS_TOKEN` and `SUPABASE_PROJECT_ID` are available/can be setup on Supabase.
+
+`SUPABASE_ENV_FILE` consists of the environment variables needed to run the edge functions that are not the [default secrets](https://supabase.com/docs/guides/functions/secrets#default-secrets). During the GitHub Action, the value of this secret is echoed into a `.env` file which is then passed to Supabase. This step is taken because the secrets set in the Supabase Vault do not appear to be available to edge functions. If the environment variables used by the functions changes, the `SUPABASE_ENV_FILE` secret should be updated at GitHub.
