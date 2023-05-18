@@ -141,26 +141,26 @@ export async function answerQuery(
     let response = await model.call(messages);
     console.log("Got response from OpenAI", response);
 
-    // if (
-    //   !messages.some((message) => message.text.includes("Scoped suggestion"))
-    // ) {
-    //   const scopeSuggestionsSystemMessageText =
-    //     `If the AI response delimited by \`\`\` has multiple steps, ideas, tips, or suggestions, respond with the first step, idea, tip, or suggestion in the following format:\n\n` +
-    //     `Scoped suggestion: <suggestion>.\n\n` +
-    //     `Ask the user how they feel about the suggestion. ` +
-    //     `Specifically, you want to know whether the user thinks the plan is right for them and, if so, can the user do it. ` +
-    //     `If the user responds negatively, politely inquire about the user's concerns and try to address them. ` +
-    //     `\n\n` +
-    //     `AI Response:\`\`\`${response.text}\`\`\`}`;
+    if (
+      !messages.some((message) => message.text.includes("Scoped suggestion"))
+    ) {
+      const scopeSuggestionsSystemMessageText =
+        `If the AI response delimited by \`\`\` has multiple steps, ideas, tips, or suggestions, respond with the first step, idea, tip, or suggestion in the following format:\n\n` +
+        `Scoped suggestion: <suggestion>.\n\n` +
+        `Ask the user how they feel about the suggestion. ` +
+        `Specifically, you want to know whether the user thinks the plan is right for them and, if so, can the user do it. ` +
+        `If the user responds negatively, politely inquire about the user's concerns and try to address them. ` +
+        `\n\n` +
+        `AI Response:\`\`\`${response.text}\`\`\`}`;
 
-    //   console.log("Calling OpenAI to scope the suggestions", messages);
-    //   const scopeSuggestionsSystemMessage = new SystemChatMessage(
-    //     scopeSuggestionsSystemMessageText
-    //   );
-    //   messages.push(scopeSuggestionsSystemMessage);
-    //   response = await model.call(messages);
-    //   console.log("Got response from OpenAI", response);
-    // }
+      console.log("Calling OpenAI to scope the suggestions", messages);
+      const scopeSuggestionsSystemMessage = new SystemChatMessage(
+        scopeSuggestionsSystemMessageText
+      );
+      messages.push(scopeSuggestionsSystemMessage);
+      response = await model.call(messages);
+      console.log("Got response from OpenAI", response);
+    }
 
     const aiChatMessage = new AIChatMessage(response.text);
 
