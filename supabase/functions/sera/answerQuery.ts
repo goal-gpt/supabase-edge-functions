@@ -82,6 +82,10 @@ export async function answerQuery(
           `You know that many people feel shame and guilt with respect to money matters and you want to help them to feel better. ` +
           `Your task is to help users make plans to manage the financial aspects of events in their lives and to achieve their financial goals. ` +
           `You are very creative and open-minded when it comes to finding financial aspects to a user's concerns. ` +
+          `If you cannot find any financial aspects to help the user with at all,` +
+          `politely respond that you only help with inquiries about personal finance.` +
+          `For example, you are happy to help with the financial aspects of a wedding, but you cannot help to choose the color of the flowers.` +
+          `If you do not know the answer, explain that you do not know the answer. Do not try to make up an answer.` +
           `First, ask the user follow-up questions to make sure you understand the user's worries, ` +
           `the financial, social, and emotional context of the user's situation, and any other relevant information. ` +
           `If knowing personal information about the user would help to formulate a plan with the user ` +
@@ -148,12 +152,12 @@ export async function answerQuery(
       console.log("Calling OpenAI to scope the suggestions", messages);
       const scopeSuggestionsSystemMessage = new SystemChatMessage(
         `If the AI response delimited by \`\`\` has multiple steps, ideas, tips, or suggestions, respond with the first step, idea, tip, or suggestion in the following format:\n\n` +
-        `Scoped suggestion: <suggestion>.\n\n` +
-        `Ask the user how they feel about the suggestion. ` +
-        `Specifically, you want to know whether the user thinks the plan is right for them and, if so, can the user do it. ` +
-        `If the user responds negatively, politely inquire about the user's concerns and try to address them. ` +
-        `\n\n` +
-        `AI Response:\`\`\`${response.text}\`\`\`}`
+          `Scoped suggestion: <suggestion>.\n\n` +
+          `Ask the user how they feel about the suggestion. ` +
+          `Specifically, you want to know whether the user thinks the plan is right for them and, if so, can the user do it. ` +
+          `If the user responds negatively, politely inquire about the user's concerns and try to address them. ` +
+          `\n\n` +
+          `AI Response:\`\`\`${response.text}\`\`\`}`
       );
 
       messages.push(scopeSuggestionsSystemMessage);
@@ -167,10 +171,10 @@ export async function answerQuery(
     ) {
       console.log("Calling OpenAI to confirm consent to the plan", messages);
       const formalizePlanSystemMessage = new SystemChatMessage(
-        `If you have suggested a plan to the user and the user response delimited by \`\`\` is totally positive, respond with 'Plan created!'`+
-        `\n\n`+
-        `User Response:\`\`\`${message}\`\`\`}`
-      )
+        `If you have suggested a plan to the user and the user response delimited by \`\`\` is totally positive, respond with 'Plan created!'` +
+          `\n\n` +
+          `User Response:\`\`\`${message}\`\`\`}`
+      );
 
       messages.push(formalizePlanSystemMessage);
 
@@ -179,24 +183,28 @@ export async function answerQuery(
 
       if (response.text.includes("Plan created!")) {
         console.log("Calling OpenAI to formalize the plan", messages);
-        messages.push(new SystemChatMessage(
-          `Reformat the steps with the following format:\n`+
-          `Title: <summary description of the plan's goal>\n`+
-          `JSON: <a JSON array consisting of step objects, where each object has 2 keys: 'id', which is the number of the step, and 'description', which is the complete description of the step as provided earlier\n\n`+
-          `The title should not include the word 'plan'.\n`+
-          `The description key should not be a summary of the step, but the complete content of the step that you provided earlier.`
-        ));
+        messages.push(
+          new SystemChatMessage(
+            `Reformat the steps with the following format:\n` +
+              `Title: <summary description of the plan's goal>\n` +
+              `JSON: <a JSON array consisting of step objects, where each object has 2 keys: 'id', which is the number of the step, and 'description', which is the complete description of the step as provided earlier\n\n` +
+              `The title should not include the word 'plan'.\n` +
+              `The description key should not be a summary of the step, but the complete content of the step that you provided earlier.`
+          )
+        );
 
         response = await model.call(messages);
         console.log("Got response from OpenAI", response.text);
       }
       if (response.text.includes("Plan created!")) {
         console.log("Calling OpenAI to wrap up the chat", messages);
-        messages.push(new SystemChatMessage(
-          `Inform the user that their plan has been saved. `+
-          `Because you are an empathetic AI and you know that thinking about money can be stressful, `+
-          `say something to lighten the mood.`
-        ));
+        messages.push(
+          new SystemChatMessage(
+            `Inform the user that their plan has been saved. ` +
+              `Because you are an empathetic AI and you know that thinking about money can be stressful, ` +
+              `say something to lighten the mood.`
+          )
+        );
 
         response = await model.call(messages);
         console.log("Got response from OpenAI", response.text);
