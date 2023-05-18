@@ -185,11 +185,11 @@ export async function answerQuery(
           `The title should not include the word 'plan'.\n`+
           `The description key should not be a summary of the step, but the complete content of the step that you provided earlier.`
         ));
-        messages.push(new SystemChatMessage(
-          `Inform the user that their plan has been saved. `+
-          `Because you are an empathetic AI and you know that thinking about money can be stressful, `+
-          `say something to lighten the mood.`
-        ));
+        // messages.push(new SystemChatMessage(
+        //   `Inform the user that their plan has been saved. `+
+        //   `Because you are an empathetic AI and you know that thinking about money can be stressful, `+
+        //   `say something to lighten the mood.`
+        // ));
 
         response = await model.call(messages);
         console.log("Got response from OpenAI", response.text);
