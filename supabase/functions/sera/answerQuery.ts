@@ -145,22 +145,53 @@ export async function answerQuery(
       !messages.some((message) => message.text.includes("Scoped suggestion")) &&
       messages.filter((message) => message._getType() === "human").length > 1
     ) {
-      const scopeSuggestionsSystemMessageText =
+      console.log("Calling OpenAI to scope the suggestions", messages);
+      const scopeSuggestionsSystemMessage = new SystemChatMessage(
         `If the AI response delimited by \`\`\` has multiple steps, ideas, tips, or suggestions, respond with the first step, idea, tip, or suggestion in the following format:\n\n` +
         `Scoped suggestion: <suggestion>.\n\n` +
         `Ask the user how they feel about the suggestion. ` +
         `Specifically, you want to know whether the user thinks the plan is right for them and, if so, can the user do it. ` +
         `If the user responds negatively, politely inquire about the user's concerns and try to address them. ` +
         `\n\n` +
-        `AI Response:\`\`\`${response.text}\`\`\`}`;
-
-      console.log("Calling OpenAI to scope the suggestions", messages);
-      const scopeSuggestionsSystemMessage = new SystemChatMessage(
-        scopeSuggestionsSystemMessageText
+        `AI Response:\`\`\`${response.text}\`\`\`}`
       );
+
       messages.push(scopeSuggestionsSystemMessage);
       response = await model.call(messages);
       console.log("Got response from OpenAI", response);
+    }
+
+    if (
+      !messages.some((message) => message.text.includes("Plan created")) &&
+      messages.filter((message) => message._getType() === "human").length > 1
+    ) {
+      console.log("Calling OpenAI to formalize the plan", messages);
+      const formalizePlanSystemMessage = new SystemChatMessage(
+        `If you have suggested a plan to the user and the user response delimited by \`\`\` is totally positive, respond with 'Plan created!'`+
+        `\n\n`+
+        `User Response:\`\`\`${message}\`\`\`}`
+      )
+      
+      messages.push(formalizePlanSystemMessage);
+
+      response = await model.call(messages);
+
+      if (response.text.includes("Plan created!")) {
+        messages.push(new SystemChatMessage(
+          `Reformat the steps with the following format:\n`+
+          `Title: <summary description of the plan's goal>\n`+
+          `JSON: <a JSON array consisting of step objects, where each object has 2 keys: 'id', which is the number of the step, and 'description', which is the complete description of the step as provided earlier\n\n`+
+          `The title should not include the word 'plan'.\n`+
+          `The description key should not be a summary of the step, but the complete content of the step that you provided earlier.`
+        ));
+        messages.push(new SystemChatMessage(
+          `Inform the user that their plan has been saved. `+
+          `Because you are an empathetic AI and you know that thinking about money can be stressful, `+
+          `say something to lighten the mood.`
+        ));
+
+        response = await model.call(messages);
+      }
     }
 
     const aiChatMessage = new AIChatMessage(response.text);
