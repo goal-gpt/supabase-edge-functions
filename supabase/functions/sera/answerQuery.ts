@@ -15,6 +15,7 @@ interface ChatLine {
 }
 
 async function getAllChatLines(supabaseClient: SupabaseClient, chat: number) {
+  console.log("Getting all chat lines", chat);
   const { data, error } = await supabaseClient.from("chat_line").select("*").eq("chat", chat);
   if (error) throw error;
 
@@ -37,6 +38,7 @@ async function getAllChatLines(supabaseClient: SupabaseClient, chat: number) {
 }
 
 async function createChatLine(supabaseClient: SupabaseClient, message: BaseChatMessage, chat?: number) {
+  console.log("Creating chat line", message.text, chat);
   const chatLine: ChatLine = {
     chat: chat ? chat : null,
     message: message.text,
