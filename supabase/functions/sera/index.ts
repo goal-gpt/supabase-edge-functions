@@ -8,27 +8,27 @@ serve(async (request: Request) => {
   try {
     // Create a Supabase client with the Auth context of the logged in user.
     const supabaseClient = createClient(request);
-    
-  if (request.method === "OPTIONS") {
-    console.log("Handling CORS preflight request.");
-    return new Response("ok", { headers: corsHeaders });
-  }
-  
-  console.log("Handling request.");
-  const { message, chat } = await request.json();
-  const model = new ChatOpenAI({
-    openAIApiKey: Deno.env.get("OPENAI_API_KEY"),
-    temperature: 0,
-    modelName: "gpt-3.5-turbo",
-    verbose: true,
-  });
-  
-  return await answerQuery(model, message, supabaseClient, chat);
+
+    if (request.method === "OPTIONS") {
+      console.log("Handling CORS preflight request.");
+      return new Response("ok", { headers: corsHeaders });
+    }
+
+    console.log("Handling request.");
+    const { message, chat } = await request.json();
+    const model = new ChatOpenAI({
+      openAIApiKey: Deno.env.get("OPENAI_API_KEY"),
+      temperature: 0,
+      modelName: "gpt-3.5-turbo",
+      verbose: true,
+    });
+
+    return await answerQuery(model, message, supabaseClient, chat);
   } catch (error) {
-    console.error(error)
+    console.error(error);
 
     return new Response(JSON.stringify({ error: error.message }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 400,
     });
   }

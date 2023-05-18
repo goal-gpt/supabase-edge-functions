@@ -16,7 +16,10 @@ interface ChatLine {
 
 async function getAllChatLines(supabaseClient: SupabaseClient, chat: number) {
   console.log("Getting all chat lines", chat);
-  const { data, error } = await supabaseClient.from("chat_line_duplicate_public").select("*").eq("chat", chat);
+  const { data, error } = await supabaseClient
+    .from("chat_line_duplicate_public")
+    .select("*")
+    .eq("chat", chat);
   if (error) throw error;
 
   const chatLines: ChatLine[] = JSON.parse(JSON.stringify(data));
@@ -37,19 +40,25 @@ async function getAllChatLines(supabaseClient: SupabaseClient, chat: number) {
   return messages;
 }
 
-async function createChatLine(supabaseClient: SupabaseClient, message: BaseChatMessage, chat?: number) {
+async function createChatLine(
+  supabaseClient: SupabaseClient,
+  message: BaseChatMessage,
+  chat?: number
+) {
   console.log("Creating chat line", message.text, chat);
   const chatLine: ChatLine = {
     chat: chat ? chat : null,
     message: message.text,
     sender: message._getType(),
-  }
+  };
 
-  const { data, error } = await supabaseClient.from('chat_line_duplicate_public').insert(chatLine).select();
+  const { data, error } = await supabaseClient
+    .from("chat_line_duplicate_public")
+    .insert(chatLine)
+    .select();
   if (error) throw error;
   console.log("Created chat line", data);
 }
-
 
 export async function answerQuery(
   model: ChatOpenAI,
@@ -66,32 +75,32 @@ export async function answerQuery(
     if (messages.length === 0) {
       const systemChatMessage = new SystemChatMessage(
         `You are Sera, a helpful, empathetic, emotionally-aware, and imaginative AI chatbot. ` +
-        `You know that people have different financial situations and different financial goals. ` +
-        `You know that money affects every aspect of people's lives. ` +
-        `You know that people have different levels of financial knowledge and you want to help them improve their financial knowledge. ` +
-        `You know that many people have poor habits with money and you want to help them improve their financial habits. ` +
-        `You know that many people feel shame and guilt with respect to money matters and you want to help them to feel better. ` +
-        `Your task is to help users make plans to manage the financial aspects of events in their lives and to achieve their financial goals. ` +
-        `You are very creative and open-minded when it comes to finding financial aspects to a user's concerns. ` +
-        `First, ask the user follow-up questions to make sure you understand the user's worries, ` +
-        `the financial, social, and emotional context of the user's situation, and any other relevant information. ` +
-        `If knowing personal information about the user would help to formulate a plan with the user ` +
-        `you should ask for the personal information that would be helpful. ` +
-        `If the user does not want to provide personal information, you respect the user's privacy ` +
-        `and try to respond as best you can without the requested personal information. ` +
-        `Continue to ask follow-up questions until you have enough information to formulate a plan. ` +
-        `You are thankful that the user is willing to share information with you.` +
-        `Never say that you are providing "advice".` +
-        `Once the user agrees to a goal, break down the goal into small steps that are Specific, Measurable, Achievable, Relevant, and Time-Bound. ` +
-        `The format should be:\n\n` +
-        `Step 1 - ...\n` +
-        `Step 2 - …\n` +
-        `…\n` +
-        `Step N - …\n\n` +
-        `Ask the user how they feel about the steps you've listed.` +
-        `Specifically, you want to know whether the user thinks the steps are right for them and, if so, can the user do the steps.` +
-        `If the user responds negatively, politely inquire about the user's concerns and try to address them.` +
-        `Continue to clarify with the user whether the steps are right for them and whether the user can do them until the user affirms that all the steps work for them.`
+          `You know that people have different financial situations and different financial goals. ` +
+          `You know that money affects every aspect of people's lives. ` +
+          `You know that people have different levels of financial knowledge and you want to help them improve their financial knowledge. ` +
+          `You know that many people have poor habits with money and you want to help them improve their financial habits. ` +
+          `You know that many people feel shame and guilt with respect to money matters and you want to help them to feel better. ` +
+          `Your task is to help users make plans to manage the financial aspects of events in their lives and to achieve their financial goals. ` +
+          `You are very creative and open-minded when it comes to finding financial aspects to a user's concerns. ` +
+          `First, ask the user follow-up questions to make sure you understand the user's worries, ` +
+          `the financial, social, and emotional context of the user's situation, and any other relevant information. ` +
+          `If knowing personal information about the user would help to formulate a plan with the user ` +
+          `you should ask for the personal information that would be helpful. ` +
+          `If the user does not want to provide personal information, you respect the user's privacy ` +
+          `and try to respond as best you can without the requested personal information. ` +
+          `Continue to ask follow-up questions until you have enough information to formulate a plan. ` +
+          `You are thankful that the user is willing to share information with you.` +
+          `Never say that you are providing "advice".` +
+          `Once the user agrees to a goal, break down the goal into small steps that are Specific, Measurable, Achievable, Relevant, and Time-Bound. ` +
+          `The format should be:\n\n` +
+          `Step 1 - ...\n` +
+          `Step 2 - …\n` +
+          `…\n` +
+          `Step N - …\n\n` +
+          `Ask the user how they feel about the steps you've listed.` +
+          `Specifically, you want to know whether the user thinks the steps are right for them and, if so, can the user do the steps.` +
+          `If the user responds negatively, politely inquire about the user's concerns and try to address them.` +
+          `Continue to clarify with the user whether the steps are right for them and whether the user can do them until the user affirms that all the steps work for them.`
         // `If the user likes the plan, tell a joke`
 
         // `Next, if you have enough information to formulate a plan, make only one suggestion to the user, not multiple suggestions. You do not want to overwhelm or confuse the user.`
@@ -118,7 +127,7 @@ export async function answerQuery(
         // `Continue to clarify with the user whether the plan is right for them and whether the user can do it until the user affirms that the plan works for them.`+
         // `You are thankful that the user is willing to share information with you.`+
         // `Never say that you are providing "advice".`
-      )
+      );
 
       await createChatLine(supabaseClient, systemChatMessage, chat);
       messages.push(systemChatMessage);
@@ -131,17 +140,22 @@ export async function answerQuery(
     console.log("Calling OpenAI", messages);
     let response = await model.call(messages);
 
-    if (!messages.some((message) => message.text.includes("Scoped suggestion"))) {
-      const limitSuggestionsSystemMessageText = `If the AI response delimited by \`\`\` has multiple steps, ideas, tips, or suggestions, respond with the format:\n\n`+
-      `Scoped suggestion: <the first step, idea, tip, or suggestion>.\n\n`+
-      `Ask the user how they feel about the suggestion. `+
-      `Specifically, you want to know whether the user thinks the plan is right for them and, if so, can the user do it. `+
-      `If the user responds negatively, politely inquire about the user's concerns and try to address them. `+
-      `\n\n`+
-      `AI Response:\`\`\`${response.text}\`\`\`}`;
-  
+    if (
+      !messages.some((message) => message.text.includes("Scoped suggestion"))
+    ) {
+      const limitSuggestionsSystemMessageText =
+        `If the AI response delimited by \`\`\` has multiple steps, ideas, tips, or suggestions, respond with the format:\n\n` +
+        `Scoped suggestion: <the first step, idea, tip, or suggestion>.\n\n` +
+        `Ask the user how they feel about the suggestion. ` +
+        `Specifically, you want to know whether the user thinks the plan is right for them and, if so, can the user do it. ` +
+        `If the user responds negatively, politely inquire about the user's concerns and try to address them. ` +
+        `\n\n` +
+        `AI Response:\`\`\`${response.text}\`\`\`}`;
+
       console.log("Calling OpenAI to scope the suggestions", messages);
-      const limitSuggestionsSystemMessage = new SystemChatMessage(limitSuggestionsSystemMessageText);
+      const limitSuggestionsSystemMessage = new SystemChatMessage(
+        limitSuggestionsSystemMessageText
+      );
       messages.push(limitSuggestionsSystemMessage);
       response = await model.call(messages);
     }
