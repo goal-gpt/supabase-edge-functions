@@ -171,10 +171,11 @@ export async function answerQuery(
         `\n\n`+
         `User Response:\`\`\`${message}\`\`\`}`
       )
-      
+
       messages.push(formalizePlanSystemMessage);
 
       response = await model.call(messages);
+      console.log("Got response from OpenAI", response);
 
       if (response.text.includes("Plan created!")) {
         messages.push(new SystemChatMessage(
@@ -191,6 +192,7 @@ export async function answerQuery(
         ));
 
         response = await model.call(messages);
+        console.log("Got response from OpenAI", response);
       }
     }
 
