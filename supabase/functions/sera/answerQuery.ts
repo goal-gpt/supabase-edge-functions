@@ -128,10 +128,10 @@ export async function answerQuery(
     createChatLine(supabaseClient, humanChatMessage, chat);
     messages.push(humanChatMessage);
 
-  //   const response = await model.call(messages);
-  //   const aiChatMessage = new AIChatMessage(response.text);
+    const response = await model.call(messages);
+    const aiChatMessage = new AIChatMessage(response.text);
 
-  //   createChatLine(supabaseClient, aiChatMessage, chat);
+    createChatLine(supabaseClient, aiChatMessage, chat);
 
     return new Response("ok", {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
