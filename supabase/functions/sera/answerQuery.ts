@@ -15,7 +15,7 @@ interface ChatLine {
 }
 
 async function getAllChatLines(supabaseClient: SupabaseClient, chat: number) {
-  const { data, error } = await supabaseClient.from("chat_lines").select("*").eq("chat", chat);
+  const { data, error } = await supabaseClient.from("chat_line").select("*").eq("chat", chat);
   if (error) throw error;
 
   const chatLines: ChatLine[] = JSON.parse(JSON.stringify(data));
@@ -43,7 +43,7 @@ async function createChatLine(supabaseClient: SupabaseClient, message: BaseChatM
     sender: message._getType(),
   }
 
-  const { error } = await supabaseClient.from('chat_lines').insert(chatLine)
+  const { error } = await supabaseClient.from('chat_line').insert(chatLine)
   if (error) throw error
 }
 
