@@ -128,12 +128,29 @@ export async function answerQuery(
     await createChatLine(supabaseClient, humanChatMessage, chat);
     messages.push(humanChatMessage);
 
-    const response = await model.call(messages);
+    console.log("Calling OpenAI", messages);
+    let response = await model.call(messages);
+
+    if (!messages.some((message) => message.text.includes("Scoped suggestion"))) {
+      const limitSuggestionsSystemMessageText = `If the AI response delimited by \`\`\` has multiple steps, ideas, tips, or suggestions, respond with the format:\n\n`+
+      `Scoped suggestion: <the first step, idea, tip, or suggestion>.\n\n`+
+      `Ask the user how they feel about the suggestion. `+
+      `Specifically, you want to know whether the user thinks the plan is right for them and, if so, can the user do it. `+
+      `If the user responds negatively, politely inquire about the user's concerns and try to address them. `+
+      `\n\n`+
+      `AI Response:\`\`\`${response.text}\`\`\`}`;
+  
+      console.log("Calling OpenAI to scope the suggestions", messages);
+      const limitSuggestionsSystemMessage = new SystemChatMessage(limitSuggestionsSystemMessageText);
+      messages.push(limitSuggestionsSystemMessage);
+      response = await model.call(messages);
+    }
+
     const aiChatMessage = new AIChatMessage(response.text);
 
     await createChatLine(supabaseClient, aiChatMessage, chat);
 
-    return new Response("ok", {
+    return new Response(JSON.stringify(response), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
