@@ -45,8 +45,9 @@ async function createChatLine(supabaseClient: SupabaseClient, message: BaseChatM
     sender: message._getType(),
   }
 
-  const { error } = await supabaseClient.from('chat_line').insert(chatLine)
-  if (error) throw error
+  const { data, error } = await supabaseClient.from('chat_line').insert(chatLine).select();
+  if (error) throw error;
+  console.log("Created chat line", data);
 }
 
 
@@ -119,7 +120,7 @@ export async function answerQuery(
         // `Never say that you are providing "advice".`
       )
 
-      createChatLine(supabaseClient, systemChatMessage, chat);
+      await createChatLine(supabaseClient, systemChatMessage, chat);
       messages.push(systemChatMessage);
     }
   //   const humanChatMessage = new HumanChatMessage(message);
