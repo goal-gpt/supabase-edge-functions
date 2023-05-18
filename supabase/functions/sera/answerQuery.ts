@@ -123,10 +123,10 @@ export async function answerQuery(
       await createChatLine(supabaseClient, systemChatMessage, chat);
       messages.push(systemChatMessage);
     }
-  //   const humanChatMessage = new HumanChatMessage(message);
+    const humanChatMessage = new HumanChatMessage(message);
 
-  //   createChatLine(supabaseClient, humanChatMessage, chat);
-  //   messages.push(humanChatMessage);
+    createChatLine(supabaseClient, humanChatMessage, chat);
+    messages.push(humanChatMessage);
 
   //   const response = await model.call(messages);
   //   const aiChatMessage = new AIChatMessage(response.text);
