@@ -125,13 +125,13 @@ export async function answerQuery(
     }
     const humanChatMessage = new HumanChatMessage(message);
 
-    createChatLine(supabaseClient, humanChatMessage, chat);
+    await createChatLine(supabaseClient, humanChatMessage, chat);
     messages.push(humanChatMessage);
 
     const response = await model.call(messages);
     const aiChatMessage = new AIChatMessage(response.text);
 
-    createChatLine(supabaseClient, aiChatMessage, chat);
+    await createChatLine(supabaseClient, aiChatMessage, chat);
 
     return new Response("ok", {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
