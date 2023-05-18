@@ -17,7 +17,7 @@ interface ChatLine {
 async function getAllChatLines(supabaseClient: SupabaseClient, chat: number) {
   console.log("Getting all chat lines", chat);
   const { data, error } = await supabaseClient
-    .from("chat_line_duplicate_public")
+    .from("chat_line")
     .select("*")
     .eq("chat", chat);
   if (error) throw error;
@@ -53,11 +53,21 @@ async function createChatLine(
   };
 
   const { data, error } = await supabaseClient
-    .from("chat_line_duplicate_public")
+    .from("chat_line")
     .insert(chatLine)
     .select();
   if (error) throw error;
   console.log("Created chat line", data);
+}
+
+async function createChat(supabaseClient: SupabaseClient): Promise<number> {
+  console.log("Creating chat");
+  const { data, error } = await supabaseClient.from('chat').insert({}).select()
+  if (error) throw error
+
+  const chat = data[0].id
+  console.log("Created chat", chat);
+  return chat;
 }
 
 export async function answerQuery(
@@ -70,16 +80,18 @@ export async function answerQuery(
   try {
     if (chat) {
       messages.push(...(await getAllChatLines(supabaseClient, chat)));
+    } else {
+      chat = await createChat(supabaseClient);
     }
 
     if (messages.length === 0) {
       const systemChatMessage = new SystemChatMessage(
         `You are Sera, a helpful, empathetic, emotionally-aware, and imaginative AI chatbot. ` +
-          `You know that people have different financial situations and different financial goals. ` +
+          // `You know that people have different financial situations and different financial goals. ` +
           `You know that money affects every aspect of people's lives. ` +
-          `You know that people have different levels of financial knowledge and you want to help them improve their financial knowledge. ` +
-          `You know that many people have poor habits with money and you want to help them improve their financial habits. ` +
-          `You know that many people feel shame and guilt with respect to money matters and you want to help them to feel better. ` +
+          // `You know that people have different levels of financial knowledge and you want to help them improve their financial knowledge. ` +
+          // `You know that many people have poor habits with money and you want to help them improve their financial habits. ` +
+          // `You know that many people feel shame and guilt with respect to money matters and you want to help them to feel better. ` +
           `Your task is to help users make plans to manage the financial aspects of events in their lives and to achieve their financial goals. ` +
           `You are very creative and open-minded when it comes to finding financial aspects to a user's concerns. ` +
           `If you cannot find any financial aspects to help the user with at all,` +
@@ -101,9 +113,9 @@ export async function answerQuery(
           `Step 2 - …\n` +
           `…\n` +
           `Step N - …\n\n` +
-          `Ask the user how they feel about the steps you've listed. ` +
-          `Specifically, you want to know whether the user thinks the steps are right for them and, if so, can the user do the steps. ` +
-          `If the user responds negatively, politely inquire about the user's concerns and try to address them. ` +
+          `Ask the user whether they think the steps are right for them and, if so, can the user do the steps. ` +
+          `If the user responds negatively, let the user know it is OK to ask for a simpler plan and ` +
+          `politely ask the user about the user's concerns and try to address the concerns. ` +
           `Continue to clarify with the user whether the steps are right for them and whether the user can do them until the user affirms that all the steps work for them. `
         // `If the user likes the plan, tell a joke`
 
@@ -146,76 +158,69 @@ export async function answerQuery(
     console.log("Got response from OpenAI", response.text);
 
     if (
-      !messages.some((message) => message.text.includes("Scoped suggestion")) &&
-      messages.filter((message) => message._getType() === "human").length > 1
-    ) {
-      console.log("Calling OpenAI to scope the suggestions", messages);
-      const scopeSuggestionsSystemMessage = new SystemChatMessage(
-        `If the AI response delimited by \`\`\` has multiple steps, ideas, tips, or suggestions, respond with the first step, idea, tip, or suggestion in the following format:\n\n` +
-          `Scoped suggestion: <suggestion>.\n\n` +
-          `Ask the user how they feel about the suggestion. ` +
-          `Specifically, you want to know whether the user thinks the plan is right for them and, if so, can the user do it. ` +
-          `If the user responds negatively, politely inquire about the user's concerns and try to address them. ` +
-          `\n\n` +
-          `AI Response:\`\`\`${response.text}\`\`\`}`
-      );
-
-      messages.push(scopeSuggestionsSystemMessage);
-      response = await model.call(messages);
-      console.log("Got response from OpenAI", response.text);
-    }
-
-    if (
       !messages.some((message) => message.text.includes("Plan created")) &&
       messages.filter((message) => message._getType() === "human").length > 1
     ) {
       console.log("Calling OpenAI to confirm consent to the plan", messages);
       const formalizePlanSystemMessage = new SystemChatMessage(
-        `If you have suggested a plan to the user and the user response delimited by \`\`\` is totally positive, respond with 'Plan created!'` +
-          `\n\n` +
-          `User Response:\`\`\`${message}\`\`\`}`
-      );
+        `If you have suggested a plan to the user and the user response delimited by \`\`\` is totally positive, reformat the steps with the following format:\n\n` +
+          `Title: <summary description of the plan's goal>\n` +
+          `JSON: <a JSON array consisting of step objects, where each object has 2 keys: 'number', which is the number of the step, and 'action', which is the complete description of the step as provided earlier\n\n` +
+          `Do not include the word "plan" in the title.\n\n` +
+          `The action key is the complete content of the step that you provided earlier. `+
+          `Ask the user whether they think the steps are right for them and, if so, can the user do the steps. ` +
+          `If the user responds negatively, let the user know it is OK to ask for a simpler plan and ` +
+          `politely ask the user about the user's concerns and try to address the concerns. ` +
+          `After the user agrees to the plan, inform the user that their plan has been saved. ` +
+          `Because you are an empathetic AI and you know that thinking about money can be stressful, ` +
+          `say something to lighten the mood.\n\n` +
+          `User Response:\`\`\`${message}\`\`\`\n\n}`
+          );
 
       messages.push(formalizePlanSystemMessage);
 
       response = await model.call(messages);
       console.log("Got response from OpenAI", response.text);
 
-      if (response.text.includes("Plan created!")) {
-        console.log("Calling OpenAI to formalize the plan", messages);
-        messages.push(
-          new SystemChatMessage(
-            `Reformat the steps with the following format:\n` +
-              `Title: <summary description of the plan's goal>\n` +
-              `JSON: <a JSON array consisting of step objects, where each object has 2 keys: 'id', which is the number of the step, and 'description', which is the complete description of the step as provided earlier\n\n` +
-              `The title should not include the word 'plan'.\n` +
-              `The description key should not be a summary of the step, but the complete content of the step that you provided earlier.`
-          )
-        );
+      // if (response.text.includes("Plan created!")) {
+      //   console.log("Calling OpenAI to formalize the plan", messages);
+      //   messages.push(
+      //     new SystemChatMessage(
+      //       `Reformat the steps with the following format:\n` +
+      //         `Title: <summary description of the plan's goal>\n` +
+      //         `JSON: <a JSON array consisting of step objects, where each object has 2 keys: 'number', which is the number of the step, and 'action', which is the complete description of the step as provided earlier\n\n` +
+      //         `The title should not include the word 'plan'.\n` +
+      //         `The action key should not be a summary of the step, but the complete content of the step that you provided earlier.`
+      //     )
+      //   );
 
-        response = await model.call(messages);
-        console.log("Got response from OpenAI", response.text);
-      }
-      if (response.text.includes("Plan created!")) {
-        console.log("Calling OpenAI to wrap up the chat", messages);
-        messages.push(
-          new SystemChatMessage(
-            `Inform the user that their plan has been saved. ` +
-              `Because you are an empathetic AI and you know that thinking about money can be stressful, ` +
-              `say something to lighten the mood.`
-          )
-        );
+      //   response = await model.call(messages);
+      //   console.log("Got response from OpenAI", response.text);
+      // }
+      // if (response.text.includes("Plan created!")) {
+      //   console.log("Calling OpenAI to wrap up the chat", messages);
+      //   messages.push(
+      //     new SystemChatMessage(
+      //       `Inform the user that their plan has been saved. ` +
+      //         `Because you are an empathetic AI and you know that thinking about money can be stressful, ` +
+      //         `say something to lighten the mood.`
+      //     )
+      //   );
 
-        response = await model.call(messages);
-        console.log("Got response from OpenAI", response.text);
-      }
+      //   response = await model.call(messages);
+      //   console.log("Got response from OpenAI", response.text);
+      // }
     }
 
     const aiChatMessage = new AIChatMessage(response.text);
 
     await createChatLine(supabaseClient, aiChatMessage, chat);
 
-    return new Response(JSON.stringify(response), {
+    const body = {
+      text: response.text,
+      chat: chat,
+    }
+    return new Response(JSON.stringify(body), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {

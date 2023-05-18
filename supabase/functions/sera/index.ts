@@ -14,7 +14,7 @@ serve(async (request: Request) => {
       return new Response("ok", { headers: corsHeaders });
     }
 
-    console.log("Handling request.");
+    console.log("Handling request", request);
     const { message, chat } = await request.json();
     const model = new ChatOpenAI({
       openAIApiKey: Deno.env.get("OPENAI_API_KEY"),
