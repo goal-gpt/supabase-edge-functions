@@ -89,18 +89,18 @@ export async function answerQuery(
           `If the user does not want to provide personal information, you respect the user's privacy ` +
           `and try to respond as best you can without the requested personal information. ` +
           `Continue to ask follow-up questions until you have enough information to formulate a plan. ` +
-          `You are thankful that the user is willing to share information with you.` +
-          `Never say that you are providing "advice".` +
+          `You are thankful that the user is willing to share information with you. ` +
+          `Never say that you are providing "advice". ` +
           `Once the user agrees to a goal, break down the goal into small steps that are Specific, Measurable, Achievable, Relevant, and Time-Bound. ` +
           `The format should be:\n\n` +
           `Step 1 - ...\n` +
           `Step 2 - …\n` +
           `…\n` +
           `Step N - …\n\n` +
-          `Ask the user how they feel about the steps you've listed.` +
-          `Specifically, you want to know whether the user thinks the steps are right for them and, if so, can the user do the steps.` +
-          `If the user responds negatively, politely inquire about the user's concerns and try to address them.` +
-          `Continue to clarify with the user whether the steps are right for them and whether the user can do them until the user affirms that all the steps work for them.`
+          `Ask the user how they feel about the steps you've listed. ` +
+          `Specifically, you want to know whether the user thinks the steps are right for them and, if so, can the user do the steps. ` +
+          `If the user responds negatively, politely inquire about the user's concerns and try to address them. ` +
+          `Continue to clarify with the user whether the steps are right for them and whether the user can do them until the user affirms that all the steps work for them. `
         // `If the user likes the plan, tell a joke`
 
         // `Next, if you have enough information to formulate a plan, make only one suggestion to the user, not multiple suggestions. You do not want to overwhelm or confuse the user.`
@@ -141,26 +141,26 @@ export async function answerQuery(
     let response = await model.call(messages);
     console.log("Got response from OpenAI", response);
 
-    if (
-      !messages.some((message) => message.text.includes("Scoped suggestion"))
-    ) {
-      const scopeSuggestionsSystemMessageText =
-        `If the AI response delimited by \`\`\` has multiple steps, ideas, tips, or suggestions, respond with the first step, idea, tip, or suggestion in the following format:\n\n` +
-        `Scoped suggestion: <suggestion>.\n\n` +
-        `Ask the user how they feel about the suggestion. ` +
-        `Specifically, you want to know whether the user thinks the plan is right for them and, if so, can the user do it. ` +
-        `If the user responds negatively, politely inquire about the user's concerns and try to address them. ` +
-        `\n\n` +
-        `AI Response:\`\`\`${response.text}\`\`\`}`;
+    // if (
+    //   !messages.some((message) => message.text.includes("Scoped suggestion"))
+    // ) {
+    //   const scopeSuggestionsSystemMessageText =
+    //     `If the AI response delimited by \`\`\` has multiple steps, ideas, tips, or suggestions, respond with the first step, idea, tip, or suggestion in the following format:\n\n` +
+    //     `Scoped suggestion: <suggestion>.\n\n` +
+    //     `Ask the user how they feel about the suggestion. ` +
+    //     `Specifically, you want to know whether the user thinks the plan is right for them and, if so, can the user do it. ` +
+    //     `If the user responds negatively, politely inquire about the user's concerns and try to address them. ` +
+    //     `\n\n` +
+    //     `AI Response:\`\`\`${response.text}\`\`\`}`;
 
-      console.log("Calling OpenAI to scope the suggestions", messages);
-      const scopeSuggestionsSystemMessage = new SystemChatMessage(
-        scopeSuggestionsSystemMessageText
-      );
-      messages.push(scopeSuggestionsSystemMessage);
-      response = await model.call(messages);
-      console.log("Got response from OpenAI", response);
-    }
+    //   console.log("Calling OpenAI to scope the suggestions", messages);
+    //   const scopeSuggestionsSystemMessage = new SystemChatMessage(
+    //     scopeSuggestionsSystemMessageText
+    //   );
+    //   messages.push(scopeSuggestionsSystemMessage);
+    //   response = await model.call(messages);
+    //   console.log("Got response from OpenAI", response);
+    // }
 
     const aiChatMessage = new AIChatMessage(response.text);
 
