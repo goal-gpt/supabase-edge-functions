@@ -142,7 +142,8 @@ export async function answerQuery(
     console.log("Got response from OpenAI", response);
 
     if (
-      !messages.some((message) => message.text.includes("Scoped suggestion"))
+      !messages.some((message) => message.text.includes("Scoped suggestion")) &&
+      messages.filter((message) => message._getType() === "human").length > 1
     ) {
       const scopeSuggestionsSystemMessageText =
         `If the AI response delimited by \`\`\` has multiple steps, ideas, tips, or suggestions, respond with the first step, idea, tip, or suggestion in the following format:\n\n` +
