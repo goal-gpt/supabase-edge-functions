@@ -139,7 +139,7 @@ export async function answerQuery(
 
     console.log("Calling OpenAI", messages);
     let response = await model.call(messages);
-    console.log("Got response from OpenAI", response);
+    console.log("Got response from OpenAI", response.text);
 
     if (
       !messages.some((message) => message.text.includes("Scoped suggestion")) &&
@@ -158,7 +158,7 @@ export async function answerQuery(
 
       messages.push(scopeSuggestionsSystemMessage);
       response = await model.call(messages);
-      console.log("Got response from OpenAI", response);
+      console.log("Got response from OpenAI", response.text);
     }
 
     if (
@@ -175,7 +175,7 @@ export async function answerQuery(
       messages.push(formalizePlanSystemMessage);
 
       response = await model.call(messages);
-      console.log("Got response from OpenAI", response);
+      console.log("Got response from OpenAI", response.text);
 
       if (response.text.includes("Plan created!")) {
         messages.push(new SystemChatMessage(
@@ -192,7 +192,7 @@ export async function answerQuery(
         ));
 
         response = await model.call(messages);
-        console.log("Got response from OpenAI", response);
+        console.log("Got response from OpenAI", response.text);
       }
     }
 
