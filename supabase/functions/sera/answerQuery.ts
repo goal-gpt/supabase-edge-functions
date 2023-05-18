@@ -165,7 +165,7 @@ export async function answerQuery(
       !messages.some((message) => message.text.includes("Plan created")) &&
       messages.filter((message) => message._getType() === "human").length > 1
     ) {
-      console.log("Calling OpenAI to formalize the plan", messages);
+      console.log("Calling OpenAI to confirm consent to the plan", messages);
       const formalizePlanSystemMessage = new SystemChatMessage(
         `If you have suggested a plan to the user and the user response delimited by \`\`\` is totally positive, respond with 'Plan created!'`+
         `\n\n`+
@@ -178,6 +178,7 @@ export async function answerQuery(
       console.log("Got response from OpenAI", response.text);
 
       if (response.text.includes("Plan created!")) {
+        console.log("Calling OpenAI to formalize the plan", messages);
         messages.push(new SystemChatMessage(
           `Reformat the steps with the following format:\n`+
           `Title: <summary description of the plan's goal>\n`+
@@ -185,11 +186,17 @@ export async function answerQuery(
           `The title should not include the word 'plan'.\n`+
           `The description key should not be a summary of the step, but the complete content of the step that you provided earlier.`
         ));
-        // messages.push(new SystemChatMessage(
-        //   `Inform the user that their plan has been saved. `+
-        //   `Because you are an empathetic AI and you know that thinking about money can be stressful, `+
-        //   `say something to lighten the mood.`
-        // ));
+
+        response = await model.call(messages);
+        console.log("Got response from OpenAI", response.text);
+      }
+      if (response.text.includes("Plan created!")) {
+        console.log("Calling OpenAI to wrap up the chat", messages);
+        messages.push(new SystemChatMessage(
+          `Inform the user that their plan has been saved. `+
+          `Because you are an empathetic AI and you know that thinking about money can be stressful, `+
+          `say something to lighten the mood.`
+        ));
 
         response = await model.call(messages);
         console.log("Got response from OpenAI", response.text);
