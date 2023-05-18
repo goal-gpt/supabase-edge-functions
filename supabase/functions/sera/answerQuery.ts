@@ -16,7 +16,7 @@ interface ChatLine {
 
 async function getAllChatLines(supabaseClient: SupabaseClient, chat: number) {
   console.log("Getting all chat lines", chat);
-  const { data, error } = await supabaseClient.from("chat_line").select("*").eq("chat", chat);
+  const { data, error } = await supabaseClient.from("chat_line_duplicate").select("*").eq("chat", chat);
   if (error) throw error;
 
   const chatLines: ChatLine[] = JSON.parse(JSON.stringify(data));
@@ -45,7 +45,7 @@ async function createChatLine(supabaseClient: SupabaseClient, message: BaseChatM
     sender: message._getType(),
   }
 
-  const { data, error } = await supabaseClient.from('chat_line').insert(chatLine).select();
+  const { data, error } = await supabaseClient.from('chat_line_duplicate').insert(chatLine).select();
   if (error) throw error;
   console.log("Created chat line", data);
 }
