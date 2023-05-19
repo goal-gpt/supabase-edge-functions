@@ -7,14 +7,12 @@ import {
   BaseChatMessage,
 } from "langchain/schema";
 import { SupabaseClient } from "@supabase/supabase-js";
+import { Database } from "../../types/supabase.ts";
 
-interface ChatLine {
-  chat: number | null;
-  message: string;
-  sender: string;
-}
-
-async function getAllChatLines(supabaseClient: SupabaseClient, chat: number) {
+async function getAllChatLines(
+  supabaseClient: SupabaseClient<Database>,
+  chat: number
+) {
   console.log("Getting all chat lines", chat);
   const { data, error } = await supabaseClient
     .from("chat_line")
@@ -22,18 +20,23 @@ async function getAllChatLines(supabaseClient: SupabaseClient, chat: number) {
     .eq("chat", chat);
   if (error) throw error;
 
-  const chatLines: ChatLine[] = JSON.parse(JSON.stringify(data));
   const messages: BaseChatMessage[] = [];
 
-  for (let i = 0; i < chatLines.length; i++) {
-    if (chatLines[i].sender === "ai") {
-      messages.push(new AIChatMessage(chatLines[i].message));
-    } else if (chatLines[i].sender === "human") {
-      messages.push(new HumanChatMessage(chatLines[i].message));
-    } else if (chatLines[i].sender === "system") {
-      messages.push(new SystemChatMessage(chatLines[i].message));
-    } else {
-      throw new Error("Invalid chat line sender");
+  for (let i = 0; i < data.length; i++) {
+    if (data[i].message) {
+      switch (data[i].sender) {
+        case "ai":
+          messages.push(new AIChatMessage(data[i].message!));
+          break;
+        case "human":
+          messages.push(new HumanChatMessage(data[i].message!));
+          break;
+        case "system":
+          messages.push(new SystemChatMessage(data[i].message!));
+          break;
+        default:
+          throw new Error("Invalid chat line sender");
+      }
     }
   }
 
@@ -41,29 +44,26 @@ async function getAllChatLines(supabaseClient: SupabaseClient, chat: number) {
 }
 
 async function createChatLine(
-  supabaseClient: SupabaseClient,
+  supabaseClient: SupabaseClient<Database>,
   message: BaseChatMessage,
   chat?: number
 ) {
   console.log("Creating chat line", message.text, chat);
-  const chatLine: ChatLine = {
-    chat: chat ? chat : null,
-    message: message.text,
-    sender: message._getType(),
-  };
 
-  const { data, error } = await supabaseClient
+  const { data: chatLine, error } = await supabaseClient
     .from("chat_line")
-    .insert(chatLine)
+    .insert({ chat: chat, message: message.text, sender: message._getType() })
     .select();
   if (error) throw error;
-  console.log("Created chat line", data);
+  console.log("Created chat line", chatLine);
 }
 
-async function createChat(supabaseClient: SupabaseClient): Promise<number> {
+async function createChat(
+  supabaseClient: SupabaseClient<Database>
+): Promise<number> {
   console.log("Creating chat");
-  const { data, error } = await supabaseClient.from('chat').insert({}).select()
-  if (error) throw error
+  const { data, error } = await supabaseClient.from("chat").insert({}).select();
+  if (error) throw error;
 
   const chat = data[0].id
   console.log("Created chat", chat);
@@ -73,7 +73,7 @@ async function createChat(supabaseClient: SupabaseClient): Promise<number> {
 export async function answerQuery(
   model: ChatOpenAI,
   message: string,
-  supabaseClient: SupabaseClient,
+  supabaseClient: SupabaseClient<Database>,
   chat?: number
 ): Promise<Response> {
   const messages: BaseChatMessage[] = [];
@@ -167,7 +167,7 @@ export async function answerQuery(
           `Title: <summary description of the plan's goal>\n` +
           `JSON: <a JSON array consisting of step objects, where each object has 2 keys: 'number', which is the number of the step, and 'action', which is the complete description of the step as provided earlier\n\n` +
           `Do not include the word "plan" in the title.\n\n` +
-          `The action key is the complete content of the step that you provided earlier. `+
+          `The action key is the complete content of the step that you provided earlier. ` +
           `Ask the user whether they think the steps are right for them and, if so, can the user do the steps. ` +
           `If the user responds negatively, let the user know it is OK to ask for a simpler plan and ` +
           `politely ask the user about the user's concerns and try to address the concerns. ` +
@@ -175,7 +175,7 @@ export async function answerQuery(
           `Because you are an empathetic AI and you know that thinking about money can be stressful, ` +
           `say something to lighten the mood.\n\n` +
           `User Response:\`\`\`${message}\`\`\`\n\n}`
-          );
+      );
 
       messages.push(formalizePlanSystemMessage);
 
@@ -219,7 +219,7 @@ export async function answerQuery(
     const body = {
       text: response.text,
       chat: chat,
-    }
+    };
     return new Response(JSON.stringify(body), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

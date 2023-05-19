@@ -7,7 +7,7 @@ import { createClient } from "../_shared/supabase-client.ts";
 serve(async (request: Request) => {
   try {
     // Create a Supabase client with the Auth context of the logged in user.
-    const supabaseClient = createClient(request);
+    const supabaseClient = createClient();
 
     if (request.method === "OPTIONS") {
       console.log("Handling CORS preflight request.");
