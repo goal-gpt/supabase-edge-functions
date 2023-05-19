@@ -38,5 +38,5 @@ jobs:
           supabase functions deploy sera --project-ref $SUPABASE_PROJECT_ID
                 
       - name: 'Deploy Chat-lines on Supabase'
-      run: |
-        supabase functions deploy chat-lines --project-ref $SUPABASE_PROJECT_ID
+        run: |
+          supabase functions deploy chat-lines --project-ref $SUPABASE_PROJECT_ID
