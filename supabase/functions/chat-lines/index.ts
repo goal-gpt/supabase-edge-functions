@@ -22,7 +22,7 @@ async function getAllAIandHumanChatLinesByChatId(
   });
 }
 
-serve(async (request) => {
+serve(async (request: Request) => {
   console.log("Handling request", request);
   // This is needed to invoke the function from a browser
   if (request.method === "OPTIONS") {
