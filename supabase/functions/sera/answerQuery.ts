@@ -129,9 +129,9 @@ export async function answerQuery(
       if (message.length === 0) {
         console.log("User message is empty. Adding introduction to messages.");
         const introduction =
-          "Hello! I'm Sera, a chatbot here to assist you with all your personal finance questions or concerns.\n\n" +
-          "Whether you have financial goals or you’re planning for an upcoming event, I'm here to support you " +
-          "in breaking down those goals into manageable steps and improve your financial knowledge along the way.\n\n" +
+          "Hello! I'm Sera, a chatbot here to help you with all your personal finance questions or concerns.\n\n" +
+          "Whether you have financial goals, are planning for an upcoming event, or want to improve your financial knowledge, " +
+          "I'm here to support you in breaking down those goals into manageable steps.\n\n" +
           "Just let me know what you need help with!";
         const aiChatMessage = new AIChatMessage(introduction);
 
