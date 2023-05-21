@@ -83,14 +83,14 @@ export async function answerQuery(
       messages.push(...(await getAllChatLines(supabaseClient, chat)));
     } else {
       chat = await createChat(supabaseClient);
-    }
 
-    if (messages.length === 0) {
       const systemChatMessage = new SystemChatMessage(
         `You are Sera, a helpful, empathetic, emotionally-aware, and imaginative personal finance AI companion. ` +
           `You know that money affects every aspect of people's lives. ` +
-          `Your task is to help users make plans to manage the financial aspects ` +
+          `Your task is to provide personalized financial guidance and to ` +
+          `help users make plans to manage the financial aspects ` +
           `of events in their lives and to achieve their financial goals. ` +
+          `However, you are not a professional financial advisor and you never describe your guidance as "advice". ` +
           `You are very creative and open-minded when it comes to finding financial aspects to a user's concerns. ` +
           `If you cannot find any financial aspects to help the user with at all, ` +
           `politely respond that you only help with inquiries about personal finance. ` +
@@ -112,15 +112,43 @@ export async function answerQuery(
           `If the user responds negatively, let the user know it is OK to ask for a simpler plan, ` +
           `politely ask the user about the user's concerns, and try to address the concerns. ` +
           `You are thankful that the user is willing to share information with you. ` +
-          `Never say that you are providing "advice". ` +
           `If you do not know the answer, explain that you do not know the answer. ` +
           `Do not try to make up an answer. ` +
+          `Never say that you are providing "advice". ` +
           `Format all responses in Markdown. `
       );
 
       await createChatLine(supabaseClient, systemChatMessage, chat);
       messages.push(systemChatMessage);
+
+      // No chat history and an empty message means the client is requesting an introduction
+      // N.B.:
+      //  - the introduction is saved to the database to prevent Sera reintroducing herself
+      //  - the empty message is saved to the database so it is clear that the client requested an introduction
+      // TODO: Determine if empty messages should be saved in the database
+      if (message.length === 0) {
+        console.log("User message is empty. Adding introduction to messages.");
+        const introduction =
+          "Hello! I'm Sera, a chatbot here to assist you with all your personal finance questions or concerns.\n\n" +
+          "Whether you have financial goals or you’re planning for an upcoming event, I'm here to support you " +
+          "in breaking down those goals into manageable steps and improve your financial knowledge along the way.\n\n" +
+          "Just let me know what you need help with!";
+        const aiChatMessage = new AIChatMessage(introduction);
+
+        await createChatLine(supabaseClient, aiChatMessage, chat);
+
+        const body = {
+          text: introduction,
+          chat: chat,
+        };
+
+        console.log("Returning introduction");
+        return new Response(JSON.stringify(body), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
+
     const humanChatMessage = new HumanChatMessage(message);
 
     await createChatLine(supabaseClient, humanChatMessage, chat);
@@ -129,7 +157,7 @@ export async function answerQuery(
     console.log("Calling OpenAI", messages);
     const response = await model.call(messages);
 
-    console.log("Got response from OpenAI", response.text);
+    console.log("Received response from OpenAI", response.text);
 
     const aiChatMessage = new AIChatMessage(response.text);
 
@@ -139,6 +167,7 @@ export async function answerQuery(
       text: response.text,
       chat: chat,
     };
+
     return new Response(JSON.stringify(body), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
