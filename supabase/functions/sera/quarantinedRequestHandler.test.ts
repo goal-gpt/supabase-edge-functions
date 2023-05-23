@@ -1,9 +1,9 @@
 import { assertSpyCalls, returnsNext, stub } from "testing/mock.ts";
 import {
-  _internals as _privilegedRequestHandlerInternals,
+  _internals as _quarantinedRequestHandlerInternals,
   initialPrompt,
   introduction,
-} from "./privilegedRequestHandler.ts";
+} from "./quarantinedRequestHandler.ts";
 import { _internals as _supabaseClientInternals } from "../_shared/supabase-client.ts";
 import { _internals as _llmInternals } from "./llm.ts";
 import { SeraRequest } from "./sera.ts";
@@ -37,12 +37,12 @@ Deno.test("handleRequest", async (t) => {
         async () => {
           const modelStub = sinon.createStubInstance(ChatOpenAI);
           const createChatStub = stub(
-            _privilegedRequestHandlerInternals,
+            _quarantinedRequestHandlerInternals,
             "createChat",
             returnsNext([chatPromise])
           );
           const createChatLineStub = stub(
-            _privilegedRequestHandlerInternals,
+            _quarantinedRequestHandlerInternals,
             "createChatLine"
           );
 
@@ -51,10 +51,11 @@ Deno.test("handleRequest", async (t) => {
           };
 
           const response =
-            await _privilegedRequestHandlerInternals.handleRequest(
+            await _quarantinedRequestHandlerInternals.handleRequest(
               modelStub,
+              seraRequest.message,
               supabaseClientStub,
-              seraRequest
+              seraRequest.chat
             );
 
           assertSpyCalls(createChatStub, 1);
@@ -78,20 +79,21 @@ Deno.test("handleRequest", async (t) => {
             resolve(chat);
           });
           const createChatStub = stub(
-            _privilegedRequestHandlerInternals,
+            _quarantinedRequestHandlerInternals,
             "createChat",
             returnsNext([chatPromise])
           );
           const createChatLineStub = stub(
-            _privilegedRequestHandlerInternals,
+            _quarantinedRequestHandlerInternals,
             "createChatLine"
           );
 
           const response =
-            await _privilegedRequestHandlerInternals.handleRequest(
+            await _quarantinedRequestHandlerInternals.handleRequest(
               modelStubWithCall,
+              seraRequest.message,
               supabaseClientStub,
-              seraRequest
+              seraRequest.chat
             );
 
           assertSpyCalls(createChatStub, 1);
@@ -106,7 +108,7 @@ Deno.test("handleRequest", async (t) => {
     });
   });
   await t.step("with a chat, gets chat lines", async () => {
-    stub(_privilegedRequestHandlerInternals, "createChatLine");
+    stub(_quarantinedRequestHandlerInternals, "createChatLine");
 
     const chatLines: BaseChatMessage[] = [new SystemChatMessage(initialPrompt)];
     const chatLinesPromise: Promise<BaseChatMessage[]> = new Promise(
@@ -115,7 +117,7 @@ Deno.test("handleRequest", async (t) => {
       }
     );
     const getAllChatLinesStub = stub(
-      _privilegedRequestHandlerInternals,
+      _quarantinedRequestHandlerInternals,
       "getAllChatLines",
       returnsNext([chatLinesPromise])
     );
@@ -125,10 +127,11 @@ Deno.test("handleRequest", async (t) => {
       chat: chat,
     };
 
-    await _privilegedRequestHandlerInternals.handleRequest(
+    await _quarantinedRequestHandlerInternals.handleRequest(
       modelStubWithCall,
+      seraRequest.message,
       supabaseClientStub,
-      seraRequest
+      seraRequest.chat
     );
 
     assertSpyCalls(getAllChatLinesStub, 1);

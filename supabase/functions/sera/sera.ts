@@ -19,9 +19,8 @@ export class Sera {
 
     return await _privilegedRequestHandlerInternals.handleRequest(
       model,
-      seraRequest.message,
       supabaseClient,
-      seraRequest.chat
+      seraRequest
     );
   }
 }
