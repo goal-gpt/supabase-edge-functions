@@ -39,7 +39,7 @@ Deno.test("handleRequest", async (t) => {
           const createChatStub = stub(
             _privilegedRequestHandlerInternals,
             "createChat",
-            returnsNext([chatPromise, chatPromise])
+            returnsNext([chatPromise])
           );
           const createChatLineStub = stub(
             _privilegedRequestHandlerInternals,
@@ -108,10 +108,7 @@ Deno.test("handleRequest", async (t) => {
     });
   });
   await t.step("with a chat, gets chat lines", async () => {
-    const createChatLineStub = stub(
-      _privilegedRequestHandlerInternals,
-      "createChatLine"
-    );
+    stub(_privilegedRequestHandlerInternals, "createChatLine");
 
     const chatLines: BaseChatMessage[] = [new SystemChatMessage(initialPrompt)];
     const chatLinesPromise: Promise<BaseChatMessage[]> = new Promise(
