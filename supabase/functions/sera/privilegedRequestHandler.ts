@@ -111,7 +111,7 @@ export const introduction =
   "Hello! I'm Sera, a chatbot here to help you with all your personal finance questions or concerns.\n\n" +
   "Whether you have financial goals, are planning for an upcoming event, or want to improve your financial knowledge, " +
   "I'm here to support you in breaking down those goals into manageable steps.\n\n" +
-  "Just let me know what you need help with!";
+  "Let me know what you need help with!";
 
 export async function handleRequest(
   model: ChatOpenAI,
