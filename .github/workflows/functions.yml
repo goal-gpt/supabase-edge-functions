@@ -21,7 +21,7 @@ jobs:
       - run: deno test --import-map=./supabase/functions/import_map.json
 
   deploy:
-    if: github.ref == 'refs/heads/master'
+    if: github.ref == 'refs/heads/main'
 
     runs-on: ubuntu-latest
 
