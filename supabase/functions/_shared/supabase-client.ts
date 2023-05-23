@@ -9,3 +9,8 @@ export function createClient() {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
   );
 }
+
+// _internals are used for testing
+export const _internals = {
+  createClient,
+};

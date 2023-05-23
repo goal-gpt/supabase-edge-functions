@@ -1,29 +1,22 @@
 import { serve } from "http/server.ts";
-import { answerQuery } from "./answerQuery.ts";
-import { ChatOpenAI } from "langchain/chat_models/openai";
 import { corsHeaders } from "../_shared/cors.ts";
-import { createClient } from "../_shared/supabase-client.ts";
+import { Sera } from "./sera.ts";
 
 serve(async (request: Request) => {
   try {
-    // Create a Supabase client with the Auth context of the logged in user.
-    const supabaseClient = createClient();
-
     if (request.method === "OPTIONS") {
-      console.log("Handling CORS preflight request.");
+      console.log("Handling CORS preflight request");
       return new Response("ok", { headers: corsHeaders });
     }
 
-    console.log("Handling request", request);
-    const { message, chat } = await request.json();
-    const model = new ChatOpenAI({
-      openAIApiKey: Deno.env.get("OPENAI_API_KEY"),
-      temperature: 0,
-      modelName: "gpt-3.5-turbo",
-      verbose: true,
-    });
+    const sera = new Sera();
+    const seraRequest = await request.json();
+    const responseFromSera = await sera.handleRequest(seraRequest);
 
-    return await answerQuery(model, message, supabaseClient, chat);
+    console.log("Responding with:", responseFromSera);
+    return new Response(JSON.stringify(responseFromSera), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (error) {
     console.error(error);
 
