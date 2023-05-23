@@ -33,8 +33,24 @@ npx supabase start
 yarn supabase:dev
 ```
 
+## Testing and Linting
+Supabase is build on [Deno](https://deno.com/). Deno comes with a test-runner and linter.
+
+To lint:
+```shell
+$ npm run lint # deno lint
+```
+
+To run tests:
+```shell
+$ npm test # deno test --import-map=./supabase/functions/import_map.json
+```
+
 ## Continuous Deployment
-A GitHub Action deploys this repo's functions to Supabase when committed to `main`. To successfully deploy, the GitHub Action uses the following three secrets that are stored encrypted in the GitHub Secrets for this repo: `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_ID`, and `SUPABASE_ENV_FILE`.
+
+The [functions.yml](/.github/workflows/functions.yml) defines a job, "lint-and-test" that will lint and and run the code's tests when pull requests and pushes to `main` are made.
+
+Additionally, if that job succeeds, the action will deploy this repo's functions to Supabase upon pushes/merges to `main`. To successfully deploy, the GitHub Action uses the following three secrets that are stored encrypted in the GitHub Secrets for this repo: `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_ID`, and `SUPABASE_ENV_FILE`.
 
 The values for `SUPABASE_ACCESS_TOKEN` and `SUPABASE_PROJECT_ID` are available/can be setup on Supabase.
 
