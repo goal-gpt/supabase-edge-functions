@@ -6,7 +6,7 @@ import { Database } from "../../types/supabase.ts";
 
 async function getAllAIandHumanChatLinesByChatId(
   supabaseClient: SupabaseClient<Database>,
-  chat: number
+  chat: number,
 ) {
   console.log("Getting all chat lines for chat", chat);
   const { data: chatLines, error } = await supabaseClient

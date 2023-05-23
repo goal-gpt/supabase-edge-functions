@@ -6,7 +6,9 @@
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",
     "supabase:dev": "supabase functions serve --env-file supabase/.env",
-    "supabase:deploy": "supabase secrets set --env-file ./supabase/.env && supabase functions deploy chat --import-map supabase/functions/import_map_deploy.json"
+    "supabase:deploy": "supabase secrets set --env-file ./supabase/.env && supabase functions deploy chat --import-map supabase/functions/import_map_deploy.json",
+    "test": "deno test --import-map=./supabase/functions/import_map.json",
+    "lint": "deno lint"
   },
   "dependencies": {
     "@microsoft/fetch-event-source": "^2.0.1",
