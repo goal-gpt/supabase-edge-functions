@@ -3,12 +3,8 @@ import {
   _internals as _privilegedRequestHandlerInternals,
   SeraResponse,
 } from "./privilegedRequestHandler.ts";
-import { assert } from "https://deno.land/std@0.188.0/testing/asserts.ts";
-import {
-  assertSpyCalls,
-  returnsNext,
-  stub,
-} from "https://deno.land/std@0.188.0/testing/mock.ts";
+import { assert } from "testing/asserts.ts";
+import { assertSpyCalls, returnsNext, stub } from "testing/mock.ts";
 import { _internals as _supabaseClientInternals } from "../_shared/supabase-client.ts";
 import { _internals as _llmInternals } from "./llm.ts";
 

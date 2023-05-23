@@ -1,8 +1,4 @@
-import {
-  assertSpyCalls,
-  returnsNext,
-  stub,
-} from "https://deno.land/std@0.188.0/testing/mock.ts";
+import { assertSpyCalls, returnsNext, stub } from "testing/mock.ts";
 import {
   _internals as _privilegedRequestHandlerInternals,
   initialPrompt,
@@ -11,18 +7,15 @@ import {
 import { _internals as _supabaseClientInternals } from "../_shared/supabase-client.ts";
 import { _internals as _llmInternals } from "./llm.ts";
 import { SeraRequest } from "./sera.ts";
-import { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.15.0";
-import { ChatOpenAI } from "https://esm.sh/langchain@0.0.70/chat_models/openai";
-import * as sinon from "https://cdn.skypack.dev/sinon";
-import {
-  assertEquals,
-  assertStrictEquals,
-} from "https://deno.land/std@0.188.0/testing/asserts.ts";
+import { SupabaseClient } from "@supabase/supabase-js";
+import { ChatOpenAI } from "langchain/chat_models/openai";
+import * as sinon from "sinon";
+import { assertEquals, assertStrictEquals } from "testing/asserts.ts";
 import {
   AIChatMessage,
   BaseChatMessage,
-} from "https://esm.sh/langchain@0.0.70/schema";
-import { SystemChatMessage } from "https://esm.sh/langchain@0.0.70/schema";
+  SystemChatMessage,
+} from "langchain/schema";
 
 // TODO: Determine how to make tests DRY-er
 Deno.test("handleRequest", async (t) => {
