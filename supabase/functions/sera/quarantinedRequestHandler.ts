@@ -7,6 +7,7 @@ import {
 } from "langchain/schema";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "../../types/supabase.ts";
+import { SeraRequest } from "./sera.ts";
 
 async function getAllChatLines(
   supabaseClient: SupabaseClient<Database>,
@@ -111,15 +112,17 @@ export const introduction =
   "Hello! I'm Sera, a chatbot here to help you with all your personal finance questions or concerns.\n\n" +
   "Whether you have financial goals, are planning for an upcoming event, or want to improve your financial knowledge, " +
   "I'm here to support you in breaking down those goals into manageable steps.\n\n" +
-  "Just let me know what you need help with!";
+  "Let me know what you need help with!";
 
 export async function handleRequest(
   model: ChatOpenAI,
-  message: string,
   supabaseClient: SupabaseClient<Database>,
-  chat?: number
+  request: SeraRequest
 ): Promise<SeraResponse> {
   const messages: BaseChatMessage[] = [];
+  const message = request.message;
+  let chat = request.chat;
+
   if (chat) {
     // TODO: Consider replacing with database function or call to database REST API
     messages.push(...(await _internals.getAllChatLines(supabaseClient, chat)));

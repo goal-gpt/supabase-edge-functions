@@ -1,8 +1,8 @@
 import { Sera, SeraRequest } from "./sera.ts";
 import {
-  _internals as _privilegedRequestHandlerInternals,
+  _internals as _quarantinedRequestHandlerInternals,
   SeraResponse,
-} from "./privilegedRequestHandler.ts";
+} from "./quarantinedRequestHandler.ts";
 import { assert } from "testing/asserts.ts";
 import { assertSpyCalls, returnsNext, stub } from "testing/mock.ts";
 import { _internals as _supabaseClientInternals } from "../_shared/supabase-client.ts";
@@ -27,7 +27,7 @@ Deno.test("sera", async (t) => {
       const createClientStub = stub(_supabaseClientInternals, "createClient");
       const getChatOpenAIStub = stub(_llmInternals, "getChatOpenAI");
       const handleRequestStub = stub(
-        _privilegedRequestHandlerInternals,
+        _quarantinedRequestHandlerInternals,
         "handleRequest",
         returnsNext([seraResponsePromiseMock])
       );

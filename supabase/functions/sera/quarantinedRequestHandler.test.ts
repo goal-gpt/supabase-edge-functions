@@ -53,9 +53,8 @@ Deno.test("handleRequest", async (t) => {
           const response =
             await _quarantinedRequestHandlerInternals.handleRequest(
               modelStub,
-              seraRequest.message,
               supabaseClientStub,
-              seraRequest.chat
+              seraRequest
             );
 
           assertSpyCalls(createChatStub, 1);
@@ -91,9 +90,8 @@ Deno.test("handleRequest", async (t) => {
           const response =
             await _quarantinedRequestHandlerInternals.handleRequest(
               modelStubWithCall,
-              seraRequest.message,
               supabaseClientStub,
-              seraRequest.chat
+              seraRequest
             );
 
           assertSpyCalls(createChatStub, 1);
@@ -129,9 +127,8 @@ Deno.test("handleRequest", async (t) => {
 
     await _quarantinedRequestHandlerInternals.handleRequest(
       modelStubWithCall,
-      seraRequest.message,
       supabaseClientStub,
-      seraRequest.chat
+      seraRequest
     );
 
     assertSpyCalls(getAllChatLinesStub, 1);

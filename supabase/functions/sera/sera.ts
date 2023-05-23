@@ -1,7 +1,7 @@
 import {
-  _internals as _privilegedRequestHandlerInternals,
+  _internals as _quarantinedRequestHandlerInternals,
   SeraResponse,
-} from "./privilegedRequestHandler.ts";
+} from "./quarantinedRequestHandler.ts";
 import { _internals as _supabaseClientInternals } from "../_shared/supabase-client.ts";
 import { _internals as _llmInternals } from "./llm.ts";
 
@@ -17,7 +17,10 @@ export class Sera {
     const supabaseClient = _supabaseClientInternals.createClient();
     const model = _llmInternals.getChatOpenAI();
 
-    return await _privilegedRequestHandlerInternals.handleRequest(
+    // Get / update user profile from pLLM
+
+    // Get response to user based on the user profile from qLLM
+    return await _quarantinedRequestHandlerInternals.handleRequest(
       model,
       supabaseClient,
       seraRequest
