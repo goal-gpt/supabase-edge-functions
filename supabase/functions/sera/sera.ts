@@ -19,13 +19,16 @@ export class Sera {
     const model = _llmInternals.getChatOpenAI();
 
     // Get / update user profile from pLLM
-    const privilegedLLMResponse = await _internals.handleRequest(seraRequest);
+    const privilegedLLMResponse = await _internals.handleRequest(
+      supabaseClient,
+      seraRequest
+    );
 
     // Get response to user based on the user profile from qLLM
     return {
       text: "TODO: implement this",
-      chat: 1
-    }
+      chat: 1,
+    };
     // return await _quarantinedRequestHandlerInternals.handleRequest(
     //   model,
     //   supabaseClient,

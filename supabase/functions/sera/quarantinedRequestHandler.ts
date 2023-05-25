@@ -11,36 +11,41 @@ import { SeraRequest } from "./sera.ts";
 
 async function getAllChatLines(
   supabaseClient: SupabaseClient<Database>,
-  chat: number
+  chat?: number
 ): Promise<BaseChatMessage[]> {
-  console.log("Getting all chat lines", chat);
-  const { data, error } = await supabaseClient
-    .from("chat_line")
-    .select("*")
-    .eq("chat", chat);
-  if (error) throw error;
+  if (chat) {
+    console.log("Getting all chat lines", chat);
+    const { data, error } = await supabaseClient
+      .from("chat_line")
+      .select("*")
+      .eq("chat", chat);
+    if (error) throw error;
 
-  const messages: BaseChatMessage[] = [];
+    const messages: BaseChatMessage[] = [];
 
-  for (let i = 0; i < data.length; i++) {
-    if (data[i].message) {
-      switch (data[i].sender) {
-        case "ai":
-          messages.push(new AIChatMessage(data[i].message!));
-          break;
-        case "human":
-          messages.push(new HumanChatMessage(data[i].message!));
-          break;
-        case "system":
-          messages.push(new SystemChatMessage(data[i].message!));
-          break;
-        default:
-          throw new Error("Invalid chat line sender");
+    for (let i = 0; i < data.length; i++) {
+      if (data[i].message) {
+        switch (data[i].sender) {
+          case "ai":
+            messages.push(new AIChatMessage(data[i].message!));
+            break;
+          case "human":
+            messages.push(new HumanChatMessage(data[i].message!));
+            break;
+          case "system":
+            messages.push(new SystemChatMessage(data[i].message!));
+            break;
+          default:
+            throw new Error("Invalid chat line sender");
+        }
       }
     }
-  }
 
-  return messages;
+    return messages;
+  } else {
+    console.log("No chat provided, returning empty array");
+    return [];
+  }
 }
 
 async function createChatLine(

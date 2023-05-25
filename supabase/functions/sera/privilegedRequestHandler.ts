@@ -11,8 +11,8 @@ import {
   OutputFixingParser,
 } from "langchain/output_parsers";
 import { ChatOpenAI } from "langchain/chat_models/openai";
-import { SystemChatMessage } from "https://esm.sh/langchain@0.0.70/schema";
-
+import { BaseChatMessage, SystemChatMessage } from "langchain/schema";
+import { _internals as _quarantinedRequestHandlerInternals } from "./quarantinedRequestHandler.ts";
 export interface PrivilegedLLMResponse {
   intent: string[];
   background: string;
@@ -20,27 +20,77 @@ export interface PrivilegedLLMResponse {
 }
 
 export async function handleRequest(
+  supabaseClient: SupabaseClient<Database>,
   request: SeraRequest
 ): Promise<PrivilegedLLMResponse> {
+  const messages: BaseChatMessage[] = [];
+  const { message, chat } = request;
+
+  // TODO: Consider replacing with database function or call to database REST API
+  messages.push(
+    ...(await _quarantinedRequestHandlerInternals.getAllChatLines(
+      supabaseClient,
+      chat
+    ))
+  );
+
   // 1. Define output from agent/model
   const zodSchema: ZodTypeAny = z.object({
-    intentions: z
-      .enum([
-        "to_gather_information",
-        "to_provide_information",
-        "to_make_a_plan",
-        "to_update_an_existing_plan",
-        "to_receive_emotional_support",
-        "to_engage_with_the_chatbot",
-        "to_give_feedback",
-        "outside_your_scope",
-      ])
-      .array(),
-    summary: z
-      .string()
+    summary: z.object({
+      attributes: z
+        .enum([
+          "provides_background",
+          "asks_a_personal_finance_question",
+          "asks_a_non_personal_finance_question",
+          "other",
+        ])
+        .array(),
+      intent: z
+        .string()
+        .describe("Restates the message from the AI's perspective."),
+    }),
+    user_background: z
+      .object({
+        age: z.number().describe("The user's age"),
+        location: z
+          .string()
+          .describe("The user's location, e.g. 'US' or 'Berlin, Germany'"),
+        job: z.string().describe("The user's job"),
+        citizenship: z.string().describe("The user's citizenship"),
+        financial_sophistication: z
+          .string()
+          .describe("The user's financial sophistication"),
+        risk_tolerance: z.string().describe("The user's risk tolerance"),
+        dependents: z
+          .string()
+          .describe(
+            "The user's dependents, e.g. parents they support or children they have"
+          ),
+        income: z.number().describe("The user's income"),
+        expenses: z.number().describe("The user's expenses"),
+        assets: z.number().describe("The user's assets, including savings"),
+        debt: z.number().describe("The user's debt"),
+        financial_interests: z
+          .string()
+          .describe("The user's financial interests"),
+      })
       .describe(
-        "Summarize the intent of the user's message from your perspective in light of your task and background knowledge"
+        "The user's background, based only on the message and the chat history"
       ),
+    // intentions: z
+    //   .enum([
+    //     "to_get_financial_questions_answered",
+    //     "to_provide_information_to_make_a_financial_plan",
+    //     "to_make_a_financial_plan",
+    //     "to_engage_with_the_chatbot",
+    //     "other",
+    //   ])
+    //   .array(),
+    // summary: z
+    //   .string()
+    //   .describe(
+    //     "Summarize the intent of the user's message from your perspective in light of your task and background knowledge"
+    //   ),
     // }),
     // intentions: z
     //   .object({
@@ -98,12 +148,9 @@ export async function handleRequest(
     //   reasoning: z.string("Explain why you summarized the intent this way"),
     // }),
   });
-  /*.describe("Summary of the user's intent in sending the message")*/
-
   const structuredOutputParser =
     StructuredOutputParser.fromZodSchema(zodSchema);
-  const formatInstructions = structuredOutputParser.getFormatInstructions();
-
+  // const formatInstructions = structuredOutputParser.getFormatInstructions();
   // 2. Set up agent/model
   const model = new ChatOpenAI({
     openAIApiKey: Deno.env.get("OPENAI_API_KEY"),
@@ -111,17 +158,25 @@ export async function handleRequest(
     modelName: "gpt-3.5-turbo",
     verbose: true,
   });
+
+  const outputFixingParser = OutputFixingParser.fromLLM(
+    model,
+    structuredOutputParser
+  );
+
   const prompt = new PromptTemplate({
     template:
-      `You are an empathetic personal finance AI companion. Summarize's the intent of the user's message as best as possible. ` +
-  \n{ format_instructions } \n{ message } ",
-    inputVariables: ["message"],
-    partialVariables: { format_instructions: formatInstructions },
+      "You are an AI assistant to an online financial advisor. Given the messages, summarize the user's latest message to help the financial advisor to advise the user.\n{format_instructions}\n{messages}\n{user_message}\n\nDo not guess. If you are unsure, leave summary items blank.",
+    inputVariables: ["user_message", "messages"],
+    partialVariables: {
+      format_instructions: outputFixingParser.getFormatInstructions(),
+    },
   });
 
   // 3. Send request to agent/model
   const input = await prompt.format({
-    message: request.message,
+    user_message: message,
+    messages: messages,
   });
   const response = await model.call([new SystemChatMessage(input)]);
   console.log("Response from privileged LLM:", response.text);
