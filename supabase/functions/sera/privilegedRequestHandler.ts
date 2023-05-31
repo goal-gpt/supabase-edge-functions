@@ -8,6 +8,12 @@ import {
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "../../types/supabase.ts";
 import { SeraRequest } from "./sera.ts";
+import { ZodTypeAny, z } from "zod";
+import {
+  StructuredOutputParser,
+  OutputFixingParser,
+} from "langchain/output_parsers";
+import { PromptTemplate } from "langchain/prompts";
 
 async function getAllChatLines(
   supabaseClient: SupabaseClient<Database>,
@@ -70,9 +76,21 @@ async function createChat(
   return chat;
 }
 
+export interface Step {
+  number: number;
+  action: string;
+}
+
+export interface Plan {
+  title: string;
+  steps: Step[];
+}
+
 export interface SeraResponse {
   text: string;
+  question?: string;
   chat: number;
+  plan?: Plan;
 }
 
 export const initialPrompt =
@@ -113,6 +131,49 @@ export const introduction =
   "Whether you have financial goals, are planning for an upcoming event, or want to improve your financial knowledge, " +
   "I'm here to support you in breaking down those goals into manageable steps.\n\n" +
   "Let me know what you need help with!";
+
+// TODO: determine if the JSON code block markers that sometimes appear in the response are due to the invocation
+//       to use markdown in the descriptions of the "text" and "question" keys
+const responseWithJsonSchema: ZodTypeAny = z.object({
+  text: z
+    .string()
+    .describe(
+      "The AI message to send to the user without the JSON plan formatted in Markdown."
+    ),
+  question: z
+    .string()
+    .describe(
+      "An AI message asking the user if the plan is right for them and if they can do the steps, formatted in Markdown."
+    ),
+  plan: z
+    .object({
+      title: z.string().describe("The title of the plan"),
+      steps: z
+        .array(
+          z.object({
+            number: z.number().describe("The number of the step"),
+            action: z.string().describe("The action of the step"),
+          })
+        )
+        .describe("The steps of the plan"),
+    })
+    .describe("The plan to send to the user"),
+});
+
+// TODO: test
+function cleanUpResponse(json: string): string {
+  const badPrefixIndex = json.indexOf("```json\n");
+  const badSuffixIndex = json.indexOf("\n```");
+
+  if (badPrefixIndex === -1 && badSuffixIndex === -1) {
+    return json;
+  } else {
+    console.log("Cleaned up response");
+    return badPrefixIndex === -1 && badSuffixIndex === -1
+      ? json
+      : json.substring(badPrefixIndex + 8, badSuffixIndex);
+  }
+}
 
 export async function handleRequest(
   model: ChatOpenAI,
@@ -159,19 +220,57 @@ export async function handleRequest(
   await _internals.createChatLine(supabaseClient, humanChatMessage, chat);
   messages.push(humanChatMessage);
 
+  let aiChatMessage: AIChatMessage,
+    response: AIChatMessage,
+    seraResponse: SeraResponse;
+
   console.log("Calling OpenAI", messages);
-  const response = await model.call(messages);
+  response = await model.call(messages);
 
   console.log("Received response from OpenAI", response.text);
 
-  const aiChatMessage = new AIChatMessage(response.text);
+  // TODO: also detect when updating a properly formatted plan, because it will not have these markers
+  if (response.text.includes("JSON:") || response.text.includes("Title:")) {
+    console.log("Plan detected in message");
+    const parser = StructuredOutputParser.fromZodSchema(responseWithJsonSchema);
+
+    // TODO: determine whether the output fixing parser is effective or wasteful
+    const outputFixingParser = OutputFixingParser.fromLLM(model, parser);
+
+    const prompt = new PromptTemplate({
+      template: "Reformat the AI message.\n{format_instructions}\n{message}",
+      inputVariables: ["message"],
+      partialVariables: {
+        format_instructions: outputFixingParser.getFormatInstructions(),
+      },
+    });
+
+    const input = await prompt.format({
+      message: response.text,
+    });
+    const reformatMessage = new SystemChatMessage(input);
+    console.log(
+      "Calling OpenAI to reformat message into JSON",
+      reformatMessage
+    );
+    response = await model.call([reformatMessage]);
+    aiChatMessage = new AIChatMessage(response.text);
+    const cleanedResponse = cleanUpResponse(response.text);
+    const jsonResponse = JSON.parse(cleanedResponse);
+    console.log("jsonResponse after cleanup", jsonResponse);
+    seraResponse = {
+      ...jsonResponse,
+      chat: chat,
+    };
+  } else {
+    aiChatMessage = new AIChatMessage(response.text);
+    seraResponse = {
+      text: response.text,
+      chat: chat,
+    };
+  }
 
   await _internals.createChatLine(supabaseClient, aiChatMessage, chat);
-
-  const seraResponse: SeraResponse = {
-    text: response.text,
-    chat: chat,
-  };
 
   console.log("Returning response from LLM:", seraResponse);
   return seraResponse;

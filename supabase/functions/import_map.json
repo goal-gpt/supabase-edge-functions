@@ -3,6 +3,7 @@
     "http/": "https://deno.land/std@0.177.0/http/",
     "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.15.0",
     "langchain/": "https://esm.sh/langchain@0.0.85/",
+    "zod": "https://deno.land/x/zod@v3.21.4/mod.ts",
     "testing/": "https://deno.land/std@0.188.0/testing/",
     "sinon": "https://cdn.skypack.dev/sinon"
   }
