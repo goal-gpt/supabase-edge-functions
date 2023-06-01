@@ -78,7 +78,7 @@ export interface Step {
 }
 
 export interface Plan {
-  title: string;
+  goal: string;
   steps: Step[];
 }
 
@@ -110,7 +110,7 @@ export const initialPrompt =
   `Continue to ask follow-up questions until you understand the user's goal. ` +
   `Once you understand the goal, break down the goal into a plan consisting of small steps that are ` +
   `Specific, Measurable, Achievable, Relevant, and Time-Bound. The format should be:\n\n` +
-  `Title: <summary description of the plan's goal, this should start with a verb>\n` +
+  `Goal: <summary description of the plan's goal, this should start with a verb>\n` +
   `JSON: <a JSON array consisting of step objects, where each object has 2 keys: ` +
   `'number', which is the number of the step, and 'action', which is the complete description of the step.\n\n` +
   `Ask the user whether they think the steps are right for them and whether the user can do the steps. ` +
@@ -144,7 +144,7 @@ const _responseWithJsonSchema: ZodTypeAny = z.object({
     ),
   plan: z
     .object({
-      title: z.string().describe("The title of the plan"),
+      goal: z.string().describe("The goal of the plan"),
       steps: z
         .array(
           z.object({
@@ -159,7 +159,7 @@ const _responseWithJsonSchema: ZodTypeAny = z.object({
 
 // This is the hard-coded output from the StructuredOutputParser for the above schema
 const format_instructions =
-  'You must format your output as a JSON value that adheres to a given "JSON Schema" instance.\n\n"JSON Schema" is a declarative language that allows you to annotate and validate JSON documents.\n\nFor example, the example "JSON Schema" instance {{"properties": {{"foo": {{"description": "a list of test words", "type": "array", "items": {{"type": "string"}}}}}}, "required": ["foo"]}}}}\nwould match an object with one required property, "foo". The "type" property specifies "foo" must be an "array", and the "description" property semantically describes it as "a list of test words". The items within "foo" must be strings.\nThus, the object {{"foo": ["bar", "baz"]}} is a well-formatted instance of this example "JSON Schema". The object {{"properties": {{"foo": ["bar", "baz"]}}}} is not well-formatted.\n\nYour output will be parsed and type-checked according to the provided schema instance, so make sure all fields in your output match the schema exactly and there are no trailing commas!\n\nHere is the JSON Schema instance your output must adhere to. Include the enclosing markdown codeblock:\n```json\n{"type":"object","properties":{"text":{"type":"string","description":"The AI message to send to the user without the JSON plan formatted in Markdown."},"question":{"type":"string","description":"An AI message asking the user if the plan is right for them and if they can do the steps, formatted in Markdown."},"plan":{"type":"object","properties":{"title":{"type":"string","description":"The title of the plan"},"steps":{"type":"array","items":{"type":"object","properties":{"number":{"type":"number","description":"The number of the step"},"action":{"type":"string","description":"The action of the step"}},"required":["number","action"],"additionalProperties":false},"description":"The steps of the plan"}},"required":["title","steps"],"additionalProperties":false,"description":"The plan to send to the user"}},"required":["text","question","plan"],"additionalProperties":false,"$schema":"http://json-schema.org/draft-07/schema#"}\n```\n';
+  'You must format your output as a JSON value that adheres to a given "JSON Schema" instance.\n\n"JSON Schema" is a declarative language that allows you to annotate and validate JSON documents.\n\nFor example, the example "JSON Schema" instance {{"properties": {{"foo": {{"description": "a list of test words", "type": "array", "items": {{"type": "string"}}}}}}, "required": ["foo"]}}}}\nwould match an object with one required property, "foo". The "type" property specifies "foo" must be an "array", and the "description" property semantically describes it as "a list of test words". The items within "foo" must be strings.\nThus, the object {{"foo": ["bar", "baz"]}} is a well-formatted instance of this example "JSON Schema". The object {{"properties": {{"foo": ["bar", "baz"]}}}} is not well-formatted.\n\nYour output will be parsed and type-checked according to the provided schema instance, so make sure all fields in your output match the schema exactly and there are no trailing commas!\n\nHere is the JSON Schema instance your output must adhere to. Include the enclosing markdown codeblock:\n```json\n{"type":"object","properties":{"text":{"type":"string","description":"The AI message to send to the user without the JSON plan formatted in Markdown."},"question":{"type":"string","description":"An AI message asking the user if the plan is right for them and if they can do the steps, formatted in Markdown."},"plan":{"type":"object","properties":{"goal":{"type":"string","description":"The goal of the plan"},"steps":{"type":"array","items":{"type":"object","properties":{"number":{"type":"number","description":"The number of the step"},"action":{"type":"string","description":"The action of the step"}},"required":["number","action"],"additionalProperties":false},"description":"The steps of the plan"}},"required":["goal","steps"],"additionalProperties":false,"description":"The plan to send to the user"}},"required":["text","question","plan"],"additionalProperties":false,"$schema":"http://json-schema.org/draft-07/schema#"}\n```\n';
 
 // TODO: test
 function cleanUpResponse(json: string): string {
@@ -231,7 +231,7 @@ export async function handleRequest(
   console.log("Received response from OpenAI", response.text);
 
   // TODO: also detect when updating a properly formatted plan, because it will not have these markers
-  if (response.text.includes("JSON:") || response.text.includes("Title:")) {
+  if (response.text.includes("JSON:") || response.text.includes("Goal:")) {
     console.log("Plan detected in message");
 
     const prompt = new PromptTemplate({
