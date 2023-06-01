@@ -9,10 +9,6 @@ import { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "../../types/supabase.ts";
 import { SeraRequest } from "./sera.ts";
 import { ZodTypeAny, z } from "zod";
-import {
-  StructuredOutputParser,
-  OutputFixingParser,
-} from "langchain/output_parsers";
 import { PromptTemplate } from "langchain/prompts";
 
 async function getAllChatLines(
@@ -132,9 +128,10 @@ export const introduction =
   "I'm here to support you in breaking down those goals into manageable steps.\n\n" +
   "Let me know what you need help with!";
 
-// TODO: determine if the JSON code block markers that sometimes appear in the response are due to the invocation
-//       to use markdown in the descriptions of the "text" and "question" keys
-const responseWithJsonSchema: ZodTypeAny = z.object({
+// TODO: this results in a type error when used with the StructuredOutputParser: "TS2589 [ERROR]: Type instantiation is excessively deep and possibly infinite."
+//       For now, I've hard-coded the output as a template literal, "format_instructions", for the prompt
+// underscore prefix is to tell Deno lint to ignore this unused variable
+const _responseWithJsonSchema: ZodTypeAny = z.object({
   text: z
     .string()
     .describe(
@@ -159,6 +156,10 @@ const responseWithJsonSchema: ZodTypeAny = z.object({
     })
     .describe("The plan to send to the user"),
 });
+
+// This is the hard-coded output from the StructuredOutputParser for the above schema
+const format_instructions =
+  'You must format your output as a JSON value that adheres to a given "JSON Schema" instance.\n\n"JSON Schema" is a declarative language that allows you to annotate and validate JSON documents.\n\nFor example, the example "JSON Schema" instance {{"properties": {{"foo": {{"description": "a list of test words", "type": "array", "items": {{"type": "string"}}}}}}, "required": ["foo"]}}}}\nwould match an object with one required property, "foo". The "type" property specifies "foo" must be an "array", and the "description" property semantically describes it as "a list of test words". The items within "foo" must be strings.\nThus, the object {{"foo": ["bar", "baz"]}} is a well-formatted instance of this example "JSON Schema". The object {{"properties": {{"foo": ["bar", "baz"]}}}} is not well-formatted.\n\nYour output will be parsed and type-checked according to the provided schema instance, so make sure all fields in your output match the schema exactly and there are no trailing commas!\n\nHere is the JSON Schema instance your output must adhere to. Include the enclosing markdown codeblock:\n```json\n{"type":"object","properties":{"text":{"type":"string","description":"The AI message to send to the user without the JSON plan formatted in Markdown."},"question":{"type":"string","description":"An AI message asking the user if the plan is right for them and if they can do the steps, formatted in Markdown."},"plan":{"type":"object","properties":{"title":{"type":"string","description":"The title of the plan"},"steps":{"type":"array","items":{"type":"object","properties":{"number":{"type":"number","description":"The number of the step"},"action":{"type":"string","description":"The action of the step"}},"required":["number","action"],"additionalProperties":false},"description":"The steps of the plan"}},"required":["title","steps"],"additionalProperties":false,"description":"The plan to send to the user"}},"required":["text","question","plan"],"additionalProperties":false,"$schema":"http://json-schema.org/draft-07/schema#"}\n```\n';
 
 // TODO: test
 function cleanUpResponse(json: string): string {
@@ -232,20 +233,14 @@ export async function handleRequest(
   // TODO: also detect when updating a properly formatted plan, because it will not have these markers
   if (response.text.includes("JSON:") || response.text.includes("Title:")) {
     console.log("Plan detected in message");
-    const parser = StructuredOutputParser.fromZodSchema(responseWithJsonSchema);
-
-    // TODO: determine whether the output fixing parser is effective or wasteful
-    const outputFixingParser = OutputFixingParser.fromLLM(model, parser);
 
     const prompt = new PromptTemplate({
       template: "Reformat the AI message.\n{format_instructions}\n{message}",
-      inputVariables: ["message"],
-      partialVariables: {
-        format_instructions: outputFixingParser.getFormatInstructions(),
-      },
+      inputVariables: ["format_instructions", "message"],
     });
 
     const input = await prompt.format({
+      format_instructions: format_instructions,
       message: response.text,
     });
     const reformatMessage = new SystemChatMessage(input);
