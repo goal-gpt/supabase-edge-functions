@@ -226,6 +226,8 @@ export async function handleRequest(
     seraResponse: SeraResponse;
 
   console.log("Calling OpenAI", messages);
+
+  // Calls OpenAI
   response = await model.call(messages);
 
   console.log("Received response from OpenAI", response.text);
@@ -248,6 +250,8 @@ export async function handleRequest(
       "Calling OpenAI to reformat message into JSON",
       reformatMessage
     );
+
+    // Calls OpenAI
     response = await model.call([reformatMessage]);
     aiChatMessage = new AIChatMessage(response.text);
     const cleanedResponse = cleanUpResponse(response.text);
