@@ -123,10 +123,7 @@ export const initialPrompt =
   `Format all responses in Markdown. `;
 
 export const introduction =
-  "Hello! I'm Sera, a chatbot here to help you with all your personal finance questions or concerns.\n\n" +
-  "Whether you have financial goals, are planning for an upcoming event, or want to improve your financial knowledge, " +
-  "I'm here to support you in breaking down those goals into manageable steps.\n\n" +
-  "Let me know what you need help with!";
+  "Hi, my name is Sera. How can I help you with money today?";
 
 // TODO: this results in a type error when used with the StructuredOutputParser: "TS2589 [ERROR]: Type instantiation is excessively deep and possibly infinite."
 //       For now, I've hard-coded the output as a template literal, "format_instructions", for the prompt
