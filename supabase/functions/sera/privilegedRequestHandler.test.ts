@@ -2,7 +2,6 @@ import { assertSpyCalls, returnsNext, stub } from "testing/mock.ts";
 import {
   _internals as _privilegedRequestHandlerInternals,
   initialPrompt,
-  introduction,
 } from "./privilegedRequestHandler.ts";
 import { _internals as _supabaseClientInternals } from "../_shared/supabase-client.ts";
 import { _internals as _llmInternals } from "./llm.ts";
@@ -27,82 +26,37 @@ Deno.test("handleRequest", async (t) => {
   });
 
   await t.step("without a chat", async (t) => {
-    await t.step("creates chat and adds messages to the chat", async (t) => {
+    await t.step("creates chat and adds messages to the chat", async () => {
+      const seraRequest: SeraRequest = {
+        message: "Hello",
+      };
+      const chat = 1;
       const chatPromise = new Promise<number>((resolve) => {
         resolve(chat);
       });
-
-      await t.step(
-        "with an empty message, returns the introduction",
-        async () => {
-          const modelStub = sinon.createStubInstance(ChatOpenAI);
-          const createChatStub = stub(
-            _privilegedRequestHandlerInternals,
-            "createChat",
-            returnsNext([chatPromise])
-          );
-          const createChatLineStub = stub(
-            _privilegedRequestHandlerInternals,
-            "createChatLine"
-          );
-
-          const seraRequest: SeraRequest = {
-            message: "",
-          };
-
-          const response =
-            await _privilegedRequestHandlerInternals.handleRequest(
-              modelStub,
-              supabaseClientStub,
-              seraRequest
-            );
-
-          assertSpyCalls(createChatStub, 1);
-          assertSpyCalls(createChatLineStub, 2);
-          assertStrictEquals(response.text, introduction);
-          assertEquals(response.chat, chat);
-
-          createChatStub.restore();
-          createChatLineStub.restore();
-        }
+      const createChatStub = stub(
+        _privilegedRequestHandlerInternals,
+        "createChat",
+        returnsNext([chatPromise])
+      );
+      const createChatLineStub = stub(
+        _privilegedRequestHandlerInternals,
+        "createChatLine"
       );
 
-      await t.step(
-        "with a non-empty message, returns message from model",
-        async () => {
-          const seraRequest: SeraRequest = {
-            message: "Hello",
-          };
-          const chat = 1;
-          const chatPromise = new Promise<number>((resolve) => {
-            resolve(chat);
-          });
-          const createChatStub = stub(
-            _privilegedRequestHandlerInternals,
-            "createChat",
-            returnsNext([chatPromise])
-          );
-          const createChatLineStub = stub(
-            _privilegedRequestHandlerInternals,
-            "createChatLine"
-          );
-
-          const response =
-            await _privilegedRequestHandlerInternals.handleRequest(
-              modelStubWithCall,
-              supabaseClientStub,
-              seraRequest
-            );
-
-          assertSpyCalls(createChatStub, 1);
-          assertSpyCalls(createChatLineStub, 3);
-          assertStrictEquals(response.text, modelResponse);
-          assertEquals(response.chat, chat);
-
-          createChatStub.restore();
-          createChatLineStub.restore();
-        }
+      const response = await _privilegedRequestHandlerInternals.handleRequest(
+        modelStubWithCall,
+        supabaseClientStub,
+        seraRequest
       );
+
+      assertSpyCalls(createChatStub, 1);
+      assertSpyCalls(createChatLineStub, 3);
+      assertStrictEquals(response.text, modelResponse);
+      assertEquals(response.chat, chat);
+
+      createChatStub.restore();
+      createChatLineStub.restore();
     });
   });
   await t.step("with a chat, gets chat lines", async () => {

@@ -90,40 +90,23 @@ export interface SeraResponse {
 }
 
 export const initialPrompt =
-  `You are Sera, a helpful, empathetic, emotionally-aware, and imaginative personal finance AI companion. ` +
-  `You know that money affects every aspect of people's lives. ` +
-  `Your task is to provide personalized financial guidance and to ` +
-  `help users make plans to manage the financial aspects ` +
-  `of events in their lives and to achieve their financial goals. ` +
-  `However, you are not a professional financial advisor and you never describe your guidance as "advice". ` +
-  `When the user asks a question, ask the user follow-up questions. ` +
-  `You want to make sure you understand why the user has the question, the user's concerns, ` +
-  `the financial, social, and emotional context of the user's situation, and you want to know` +
-  `any personal information and specific values such as deadlines ` +
-  `or monetary amounts that are relevant to answering the question. ` +
-  `If the user does provide additional information, try to respond as best you can without the additional information. ` +
-  `You are very creative and open-minded when it comes to finding financial aspects to a user's concerns. ` +
-  `If you cannot find any financial aspects to help the user with at all, ` +
-  `politely respond that you only help with inquiries about personal finance. ` +
-  `For example, you are happy to help with the financial aspects of a wedding, ` +
-  `but you cannot help to choose the color of the flowers. ` +
-  `Continue to ask follow-up questions until you understand the user's goal. ` +
-  `Once you understand the goal, break down the goal into a plan consisting of small steps that are ` +
-  `Specific, Measurable, Achievable, Relevant, and Time-Bound. The format should be:\n\n` +
+  `You are an empathetic, emotionally-aware, and imaginative personal finance planning AI. ` +
+  `You are very creative and open-minded when it comes to finding financial aspects to requests. ` +
+  `When a user makes a request, try to respond with a financial plan, regardless of the request. ` +
+  `If you have already made a plan, use information in the request to update the plan. ` +
+  `The plan should consist of small steps that are ` +
+  `specific, measurable, achievable, relevant, and time-bound. The format should be:\n\n` +
   `Goal: <summary description of the plan's goal, this should start with a verb>\n` +
   `JSON: <a JSON array consisting of step objects, where each object has 2 keys: ` +
   `'number', which is the number of the step, and 'action', which is the complete description of the step.\n\n` +
-  `Ask the user whether they think the steps are right for them and whether the user can do the steps. ` +
-  `If the user responds negatively, let the user know it is OK to make changes to the plan, ` +
-  `politely ask the user about the user's concerns, and try to address the concerns. ` +
-  `You are thankful that the user is willing to share information with you. ` +
+  `If you cannot find any financial aspects to a request, ` +
+  `try to respond with a plan to reduce the costs or increase the earnings from buying, selling, visiting, using, or achieving the subject of the request. ` +
+  `If you cannot find any financial aspects to the request at all, ` +
+  `politely respond that you only help with inquiries about personal finance. ` +
   `If you do not know the answer, explain that you do not know the answer. ` +
   `Do not try to make up an answer. ` +
   `Never say that you are providing "advice". ` +
   `Format all responses in Markdown. `;
-
-export const introduction =
-  "Hi, my name is Sera. How can I help you with money today?";
 
 // TODO: this results in a type error when used with the StructuredOutputParser: "TS2589 [ERROR]: Type instantiation is excessively deep and possibly infinite."
 //       For now, I've hard-coded the output as a template literal, "format_instructions", for the prompt
@@ -192,25 +175,6 @@ export async function handleRequest(
 
     await _internals.createChatLine(supabaseClient, systemChatMessage, chat);
     messages.push(systemChatMessage);
-
-    // No chat history and an empty message means the client is requesting an introduction
-    // N.B.:
-    //  - the introduction is saved to the database to prevent Sera reintroducing herself
-    // TODO: Determine if empty messages should be saved in the database
-    if (message.length === 0) {
-      console.log("User message is empty. Adding introduction to messages.");
-      const aiChatMessage = new AIChatMessage(introduction);
-
-      await _internals.createChatLine(supabaseClient, aiChatMessage, chat);
-
-      const seraResponse: SeraResponse = {
-        text: introduction,
-        chat: chat,
-      };
-
-      console.log("Returning introduction");
-      return seraResponse;
-    }
   }
 
   const humanChatMessage = new HumanChatMessage(message);
