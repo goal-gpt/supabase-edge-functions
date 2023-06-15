@@ -101,8 +101,6 @@ export const initialPrompt =
   `'number', which is the number of the step, and 'action', which is the complete description of the step.\n\n` +
   `If you cannot find any financial aspects to a request, ` +
   `try to respond with a plan to reduce the costs or increase the earnings from buying, selling, visiting, using, or achieving the subject of the request. ` +
-  `If you cannot find any financial aspects to the request at all, ` +
-  `politely respond that you only help with inquiries about personal finance. ` +
   `If you do not know the answer, explain that you do not know the answer. ` +
   `Do not try to make up an answer. ` +
   `Never say that you are providing "advice". ` +
