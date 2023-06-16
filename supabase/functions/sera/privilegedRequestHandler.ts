@@ -89,23 +89,6 @@ export interface SeraResponse {
   plan?: Plan;
 }
 
-export const initialPrompt =
-  `You are an empathetic, emotionally-aware, and imaginative personal finance planning AI. ` +
-  `You are very creative and open-minded when it comes to finding financial aspects to requests. ` +
-  `When a user makes a request, try to respond with a financial plan, regardless of the request. ` +
-  `If you have already made a plan, use information in the request to update the plan. ` +
-  `The plan should consist of small steps that are ` +
-  `specific, measurable, achievable, relevant, and time-bound. The format should be:\n\n` +
-  `Goal: <summary description of the plan's goal, this should start with a verb>\n` +
-  `JSON: <a JSON array consisting of step objects, where each object has 2 keys: ` +
-  `'number', which is the number of the step, and 'action', which is the complete description of the step.\n\n` +
-  `If you cannot find any financial aspects to a request, ` +
-  `try to respond with a plan to reduce the costs or increase the earnings from buying, selling, visiting, using, or achieving the subject of the request. ` +
-  `If you do not know the answer, explain that you do not know the answer. ` +
-  `Do not try to make up an answer. ` +
-  `Never say that you are providing "advice". ` +
-  `Format all responses in Markdown. `;
-
 // TODO: this results in a type error when used with the StructuredOutputParser: "TS2589 [ERROR]: Type instantiation is excessively deep and possibly infinite."
 //       For now, I've hard-coded the output as a template literal, "format_instructions", for the prompt
 // underscore prefix is to tell Deno lint to ignore this unused variable
@@ -113,31 +96,56 @@ const _responseWithJsonSchema: ZodTypeAny = z.object({
   text: z
     .string()
     .describe(
-      "The AI message to send to the user without the JSON plan formatted in Markdown."
+      "An AI message to send to the user about the plan, formatted in Markdown"
     ),
   question: z
     .string()
     .describe(
-      "An AI message asking the user if the plan is right for them and if they can do the steps, formatted in Markdown."
+      "An AI message asking the user if the plan is right for them and if they can do the steps, formatted in Markdown"
     ),
   plan: z
     .object({
-      goal: z.string().describe("The goal of the plan"),
+      goal: z
+        .string()
+        .describe(
+          "The specific, measurable, achievable, relevant, and time-bound goal of the plan that starts with a verb"
+        ),
       steps: z
         .array(
           z.object({
             number: z.number().describe("The number of the step"),
-            action: z.string().describe("The action of the step"),
+            action: z
+              .string()
+              .describe(
+                "The specific, measurable, achievable, relevant, and time-bound action of the step. Should be verbose and descriptive."
+              ),
           })
         )
         .describe("The steps of the plan"),
     })
-    .describe("The plan to send to the user"),
+    .describe("A financial plan in response to the user request."),
 });
 
 // This is the hard-coded output from the StructuredOutputParser for the above schema
 const format_instructions =
-  'You must format your output as a JSON value that adheres to a given "JSON Schema" instance.\n\n"JSON Schema" is a declarative language that allows you to annotate and validate JSON documents.\n\nFor example, the example "JSON Schema" instance {{"properties": {{"foo": {{"description": "a list of test words", "type": "array", "items": {{"type": "string"}}}}}}, "required": ["foo"]}}}}\nwould match an object with one required property, "foo". The "type" property specifies "foo" must be an "array", and the "description" property semantically describes it as "a list of test words". The items within "foo" must be strings.\nThus, the object {{"foo": ["bar", "baz"]}} is a well-formatted instance of this example "JSON Schema". The object {{"properties": {{"foo": ["bar", "baz"]}}}} is not well-formatted.\n\nYour output will be parsed and type-checked according to the provided schema instance, so make sure all fields in your output match the schema exactly and there are no trailing commas!\n\nHere is the JSON Schema instance your output must adhere to. Include the enclosing markdown codeblock:\n```json\n{"type":"object","properties":{"text":{"type":"string","description":"The AI message to send to the user without the JSON plan formatted in Markdown."},"question":{"type":"string","description":"An AI message asking the user if the plan is right for them and if they can do the steps, formatted in Markdown."},"plan":{"type":"object","properties":{"goal":{"type":"string","description":"The goal of the plan"},"steps":{"type":"array","items":{"type":"object","properties":{"number":{"type":"number","description":"The number of the step"},"action":{"type":"string","description":"The action of the step"}},"required":["number","action"],"additionalProperties":false},"description":"The steps of the plan"}},"required":["goal","steps"],"additionalProperties":false,"description":"The plan to send to the user"}},"required":["text","question","plan"],"additionalProperties":false,"$schema":"http://json-schema.org/draft-07/schema#"}\n```\n';
+  'You must format your output as a JSON value that adheres to a given "JSON Schema" instance.\n\n"JSON Schema" is a declarative language that allows you to annotate and validate JSON documents.\n\nFor example, the example "JSON Schema" instance {{"properties": {{"foo": {{"description": "a list of test words", "type": "array", "items": {{"type": "string"}}}}}}, "required": ["foo"]}}}}\nwould match an object with one required property, "foo". The "type" property specifies "foo" must be an "array", and the "description" property semantically describes it as "a list of test words". The items within "foo" must be strings.\nThus, the object {{"foo": ["bar", "baz"]}} is a well-formatted instance of this example "JSON Schema". The object {{"properties": {{"foo": ["bar", "baz"]}}}} is not well-formatted.\n\nYour output will be parsed and type-checked according to the provided schema instance, so make sure all fields in your output match the schema exactly and there are no trailing commas!\n\nHere is the JSON Schema instance your output must adhere to. Include the enclosing markdown codeblock:\n```json\n{"type":"object","properties":{"text":{"type":"string","description":"An AI message to send to the user about the plan, formatted in Markdown."},"question":{"type":"string","description":"An AI message asking the user if the plan is right for them and if they can do the steps, formatted in Markdown"},"plan":{"type":"object","properties":{"goal":{"type":"string","description":"The specific, measurable, achievable, relevant, and time-bound goal of the plan that starts with a verb"},"steps":{"type":"array","items":{"type":"object","properties":{"number":{"type":"number","description":"The number of the step"},"action":{"type":"string","description":"The a verbose description of the action of the step that is specific, measurable, achievable, relevant, and time-bound."}},"required":["number","action"],"additionalProperties":false},"description":"The steps of the plan"}},"required":["goal","steps"],"additionalProperties":false,"description":"A financial plan in response to the user request."}},"required":["text","question","plan"],"additionalProperties":false,"$schema":"http://json-schema.org/draft-07/schema#"}\n```\n';
+
+export const initialPrompt =
+  `You are an empathetic, emotionally-aware, and imaginative personal finance planning AI. ` +
+  `You are very creative and open-minded when it comes to finding financial aspects to requests. ` +
+  `Given a user request, delimited by """, try to respond with a thorough and imaginative financial plan that consists of small steps. ` +
+  `If you have already made a plan, use information in the request to update the plan. ` +
+  // `The plan should consist of small steps that are ` +
+  // `specific, measurable, achievable, relevant, and time-bound. The format should be:\n\n` +
+  // `Goal: <summary description of the plan's goal, this should start with a verb>\n` +
+  // `JSON: <a JSON array consisting of step objects, where each object has 2 keys: ` +
+  // `'number', which is the number of the step, and 'action', which is the complete description of the step.\n\n` +
+  `If you cannot find any financial aspects to a request, ` +
+  `try to respond with a plan to reduce the costs or increase the earnings from buying, selling, visiting, using, or achieving the subject of the request. ` +
+  `If you do not know the answer, explain that you do not know the answer. ` +
+  `Do not try to make up an answer. ` +
+  `Never say that you are providing "advice".`;
+// `Format all responses in Markdown. `;
 
 // TODO: test
 function cleanUpResponse(json: string): string {
@@ -180,53 +188,51 @@ export async function handleRequest(
   await _internals.createChatLine(supabaseClient, humanChatMessage, chat);
   messages.push(humanChatMessage);
 
-  let aiChatMessage: AIChatMessage,
-    response: AIChatMessage,
-    seraResponse: SeraResponse;
+  // const aiChatMessage: AIChatMessage,
+  //   response: AIChatMessage,
+  //   seraResponse: SeraResponse;
 
-  console.log("Calling OpenAI", messages);
+  // console.log("Calling OpenAI", messages);
+
+  // // Calls OpenAI
+  // response = await model.call(messages);
+
+  // console.log("Received response from OpenAI", response.text);
+
+  // // TODO: also detect when updating a properly formatted plan, because it will not have these markers
+  // if (response.text.includes("JSON:") || response.text.includes("Goal:")) {
+  //   console.log("Plan detected in message");
+
+  const prompt = new PromptTemplate({
+    template: '{initial_prompt}\n{format_instructions}\n"""{user_request}"""',
+    inputVariables: ["initial_prompt", "format_instructions", "user_request"],
+  });
+
+  const input = await prompt.format({
+    initial_prompt: initialPrompt,
+    format_instructions: format_instructions,
+    user_request: message,
+  });
+  const planRequestMessage = new SystemChatMessage(input);
+  console.log("Calling OpenAI to get plan", planRequestMessage);
 
   // Calls OpenAI
-  response = await model.call(messages);
-
-  console.log("Received response from OpenAI", response.text);
-
-  // TODO: also detect when updating a properly formatted plan, because it will not have these markers
-  if (response.text.includes("JSON:") || response.text.includes("Goal:")) {
-    console.log("Plan detected in message");
-
-    const prompt = new PromptTemplate({
-      template: "Reformat the AI message.\n{format_instructions}\n{message}",
-      inputVariables: ["format_instructions", "message"],
-    });
-
-    const input = await prompt.format({
-      format_instructions: format_instructions,
-      message: response.text,
-    });
-    const reformatMessage = new SystemChatMessage(input);
-    console.log(
-      "Calling OpenAI to reformat message into JSON",
-      reformatMessage
-    );
-
-    // Calls OpenAI
-    response = await model.call([reformatMessage]);
-    aiChatMessage = new AIChatMessage(response.text);
-    const cleanedResponse = cleanUpResponse(response.text);
-    const jsonResponse = JSON.parse(cleanedResponse);
-    console.log("jsonResponse after cleanup", jsonResponse);
-    seraResponse = {
-      ...jsonResponse,
-      chat: chat,
-    };
-  } else {
-    aiChatMessage = new AIChatMessage(response.text);
-    seraResponse = {
-      text: response.text,
-      chat: chat,
-    };
-  }
+  const response = await model.call([planRequestMessage]);
+  const aiChatMessage = new AIChatMessage(response.text);
+  const cleanedResponse = cleanUpResponse(response.text);
+  const jsonResponse = JSON.parse(cleanedResponse);
+  console.log("jsonResponse after cleanup", jsonResponse);
+  const seraResponse = {
+    ...jsonResponse,
+    chat: chat,
+  };
+  // } else {
+  //   aiChatMessage = new AIChatMessage(response.text);
+  //   seraResponse = {
+  //     text: response.text,
+  //     chat: chat,
+  //   };
+  // }
 
   await _internals.createChatLine(supabaseClient, aiChatMessage, chat);
 
