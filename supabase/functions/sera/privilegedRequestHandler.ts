@@ -89,6 +89,17 @@ export interface SeraResponse {
   plan?: Plan;
 }
 
+export const premise =
+  `You are an empathetic, emotionally-aware, and imaginative AI personal finance guid. ` +
+  `You are very creative and open-minded when it comes to finding financial aspects to requests. ` +
+  `Given messages between you and the user, delimited by """, try to respond with a thorough and imaginative plan that consists of small steps. ` +
+  `If you have already made a plan, use information in the messages to update the plan, including the numbering of the steps, if sensible. ` +
+  `If you cannot find any financial aspects to a request, ` +
+  `try to respond with a plan to reduce the costs or increase the earnings from buying, selling, visiting, using, or achieving the subject of the request. ` +
+  `If you do not know the answer, explain that you do not know the answer. ` +
+  `Do not try to make up an answer. ` +
+  `Never say that you are providing "advice".`;
+
 // TODO: this results in a type error when used with the StructuredOutputParser: "TS2589 [ERROR]: Type instantiation is excessively deep and possibly infinite."
 //       For now, I've hard-coded the output as a template literal, "format_instructions", for the prompt
 // underscore prefix is to tell Deno lint to ignore this unused variable
@@ -155,17 +166,7 @@ const format_instructions =
   `of a user request." }}, "required": ["text", "question", "plan"], "additionalProperties": false, "$schema": ` +
   `"http://json-schema.org/draft-07/schema#"}\n\`\`\`\n`;
 
-export const premise =
-  `You are an empathetic, emotionally-aware, and imaginative AI personal finance guid. ` +
-  `You are very creative and open-minded when it comes to finding financial aspects to requests. ` +
-  `Given messages between you and the user, delimited by """, try to respond with a thorough and imaginative plan that consists of small steps. ` +
-  `If you have already made a plan, use information in the messages to update the plan, including the numbering of the steps, if sensible. ` +
-  `If you cannot find any financial aspects to a request, ` +
-  `try to respond with a plan to reduce the costs or increase the earnings from buying, selling, visiting, using, or achieving the subject of the request. ` +
-  `If you do not know the answer, explain that you do not know the answer. ` +
-  `Do not try to make up an answer. ` +
-  `Never say that you are providing "advice".`;
-
+// TODO: test
 function stripAIPrefixFromResponse(response: string): string {
   const aiPrefixIndex = response.indexOf("ai:");
   if (aiPrefixIndex === 0) {
@@ -176,34 +177,35 @@ function stripAIPrefixFromResponse(response: string): string {
   }
 }
 
-function stripPreambleFromResponse(json: string): string {
-  const jsonStartIndex = json.indexOf("\n\n{\n");
-  "".split;
+// TODO: test
+function stripPreambleFromResponse(response: string): string {
+  const jsonStartIndex = response.indexOf("\n\n{\n");
 
   if (jsonStartIndex === -1) {
-    return json;
+    return response;
   } else {
     console.log("Stripping preamble");
-    const strippedJson = json.substring(jsonStartIndex);
+    const strippedJson = response.substring(jsonStartIndex);
 
     return strippedJson;
   }
 }
 
 // TODO: test
-function cleanUpResponse(json: string): string {
-  const badPrefixIndex = json.indexOf("```json\n");
-  const badSuffixIndex = json.indexOf("\n```");
+function cleanUpResponse(response: string): string {
+  const badPrefixIndex = response.indexOf("```json\n");
+  const badSuffixIndex = response.indexOf("\n```");
 
   if (badPrefixIndex === -1 && badSuffixIndex === -1) {
-    return json;
+    return response;
   } else {
     console.log("Cleaning up response");
     return badPrefixIndex === -1 && badSuffixIndex === -1
-      ? json
-      : json.substring(badPrefixIndex + 8, badSuffixIndex);
+      ? response
+      : response.substring(badPrefixIndex + 8, badSuffixIndex);
   }
 }
+
 export async function handleRequest(
   model: ChatOpenAI,
   supabaseClient: SupabaseClient<Database>,
@@ -247,10 +249,10 @@ export async function handleRequest(
   const preambleStrippedResponse =
     stripPreambleFromResponse(aiStrippedResponse);
   const cleanedResponse = cleanUpResponse(preambleStrippedResponse);
-  const jsonResponse = JSON.parse(cleanedResponse);
-  console.log("jsonResponse after cleanup", jsonResponse);
+  const responseJson = JSON.parse(cleanedResponse);
+  console.log("responseJson after cleanup", responseJson);
   const seraResponse = {
-    ...jsonResponse,
+    ...responseJson,
     chat: chat,
   };
 
