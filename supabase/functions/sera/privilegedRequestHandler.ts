@@ -168,10 +168,12 @@ const format_instructions =
 
 // TODO: test
 function stripAIPrefixFromResponse(response: string): string {
-  const aiPrefixIndex = response.indexOf("ai:");
+  const aiPrefixIndex = response.search(/ai:/i);
   if (aiPrefixIndex === 0) {
-    console.log("Stripping AI prefix");
-    return response.split("ai:")[1];
+    const aiStrippedResponse = response.substring(4);
+
+    console.log("Stripped AI prefix:", aiStrippedResponse);
+    return aiStrippedResponse;
   } else {
     return response;
   }
@@ -184,27 +186,53 @@ function stripPreambleFromResponse(response: string): string {
   if (jsonStartIndex === -1) {
     return response;
   } else {
-    console.log("Stripping preamble");
-    const strippedJson = response.substring(jsonStartIndex);
+    const preambleStrippedResponse = response.substring(jsonStartIndex);
+    console.log("Stripped preamble:", preambleStrippedResponse);
 
-    return strippedJson;
+    return preambleStrippedResponse;
   }
 }
 
 // TODO: test
-function cleanUpResponse(response: string): string {
+function cleanResponse(response: string): string {
   const badPrefixIndex = response.indexOf("```json\n");
   const badSuffixIndex = response.indexOf("\n```");
 
   if (badPrefixIndex === -1 && badSuffixIndex === -1) {
     return response;
   } else {
-    console.log("Cleaning up response");
-    return badPrefixIndex === -1 && badSuffixIndex === -1
-      ? response
-      : response.substring(badPrefixIndex + 8, badSuffixIndex);
+    const cleanedResponse =
+      badPrefixIndex === -1 && badSuffixIndex === -1
+        ? response
+        : response.substring(badPrefixIndex + 8, badSuffixIndex);
+
+    console.log("Cleaned response:", cleanedResponse);
+    return cleanedResponse;
   }
 }
+
+// TODO: test
+function convertToSeraResponse(response: string, chat: number): SeraResponse {
+  let responseJson;
+
+  try {
+    responseJson = JSON.parse(response);
+  } catch (_e) {
+    responseJson = {
+      text: response,
+    };
+  }
+
+  const seraResponse = {
+    ...responseJson,
+    chat: chat,
+  }
+
+  console.log("Converted to seraResponse:", JSON.stringify(seraResponse));
+
+  return seraResponse;
+}
+
 
 export async function handleRequest(
   model: ChatOpenAI,
@@ -248,17 +276,12 @@ export async function handleRequest(
   const aiStrippedResponse = stripAIPrefixFromResponse(response.text);
   const preambleStrippedResponse =
     stripPreambleFromResponse(aiStrippedResponse);
-  const cleanedResponse = cleanUpResponse(preambleStrippedResponse);
-  const responseJson = JSON.parse(cleanedResponse);
-  console.log("responseJson after cleanup", responseJson);
-  const seraResponse = {
-    ...responseJson,
-    chat: chat,
-  };
+  const cleanedResponse = cleanResponse(preambleStrippedResponse);
+  const seraResponse = convertToSeraResponse(cleanedResponse, chat);
 
   await _internals.createChatLine(supabaseClient, aiChatMessage, chat);
 
-  console.log("Returning response from LLM:", seraResponse);
+  console.log("Returning processed response from LLM:", seraResponse);
   return seraResponse;
 }
 
