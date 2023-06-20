@@ -107,7 +107,7 @@ export const premise =
 // TODO: this results in a type error when used with the StructuredOutputParser: "TS2589 [ERROR]: Type instantiation is excessively deep and possibly infinite."
 //       For now, I've hard-coded the output as a template literal, "format_instructions", for the prompt
 // underscore prefix is to tell Deno lint to ignore this unused variable
-const _responseWithJsonSchema: ZodTypeAny = z.object({
+const _planWithoutIdeas: ZodTypeAny = z.object({
   text: z
     .string()
     .describe(
@@ -119,6 +119,36 @@ const _responseWithJsonSchema: ZodTypeAny = z.object({
         .string()
         .describe(
           "The specific, measurable, achievable, relevant, and time-bound goal of the plan that starts with a verb.",
+        ),
+      steps: z
+        .array(
+          z.object({
+            number: z.number().describe("The number of the step."),
+            action: z.object({
+              name: z.string().describe("The name of the step."),
+              description: z
+                .string()
+                .describe(
+                  "The 1-2 sentence description of the actions taken in this step. The description should be specific, measurable, achievable, relevant, and time-bound."
+                ),
+            }),
+          })
+        )
+        .describe("The steps of the plan")
+        .max(5),
+    })
+    .describe(
+      "An action plan to manage the financial aspects of a user request."
+    ),
+});
+
+const _planWithIdeas: ZodTypeAny = z.object({
+  plan: z
+    .object({
+      goal: z
+        .string()
+        .describe(
+          "The specific, measurable, achievable, relevant, and time-bound goal of the plan that starts with a verb."
         ),
       steps: z
         .array(
@@ -153,11 +183,6 @@ const _responseWithJsonSchema: ZodTypeAny = z.object({
                     "The most rewarding or sustainable way for the user to execute this step of this plan, tailored to their goal. Do not suggest credit cards. Max. 1 sentence."
                   ),
               }),
-              // .array(z.string())
-              // .describe(
-              //   'the most unconventional way for the user to execute this step of this plan, tailored to their goal.'
-              // )
-              // .max(1),
             }),
           }),
         )
@@ -331,7 +356,7 @@ export async function handleRequest(
     ],
   });
 
-  const parser = StructuredOutputParser.fromZodSchema(_responseWithJsonSchema);
+  const parser = StructuredOutputParser.fromZodSchema(_planWithoutIdeas);
   const formatInstructions = parser.getFormatInstructions();
   const mappedMessages = messages.map((m) => m._getType() + ": " + m.text);
   const input = await prompt.format({
@@ -349,68 +374,69 @@ export async function handleRequest(
   const aiChatMessage = new AIChatMessage(response.text);
   const seraResponse = convertToSeraResponse(aiChatMessage.text, chat);
 
-  // // Merge list of activities into plan
-  // if (seraResponse.plan) {
-  //   const listOfActivitiesPromptTemplate = new PromptTemplate({
-  //     template:
-  //       '{list_of_activities_premise}\nUser Persona:\n+++\n{user_persona}\n+++\nGoal:\n"""\n{goal}\n"""',
-  //     inputVariables: ["list_of_activities_premise", "user_persona", "goal"],
-  //   });
-  //   const listOfActivitiesPremise = `Provide a list of the 5 most unconventional ways for a user who has the user persona delimited by """ below to achieve their goals.\n`;
+  // Merge list of activities into plan
+  if (seraResponse.plan) {
+    const ideasPremise =
+      `You are an empathetic, emotionally-aware, and imaginative AI personal finance guide. ` +
+      `You are very creative and open-minded when it comes to finding financial aspects to requests. ` +
+      `You have determined the persona of the user, delimited by +++ below. ` +
+      `You have created a plan for the user, delimited by """ below. ` +
+      `Your task is to add ideas to the plan. ` +
+      `Do not change the goal or the steps.`;
 
-  //   const listOfActivitiesPrompt = await listOfActivitiesPromptTemplate.format({
-  //     list_of_activities_premise: listOfActivitiesPremise,
-  //     user_persona: userPersonaResponseText,
-  //     goal: JSON.stringify(seraResponse.plan.goal),
-  //   });
-  //   const listOfActivitiesMessage = new SystemChatMessage(
-  //     listOfActivitiesPrompt
-  //   );
-  //   console.log(
-  //     "Calling OpenAI to get list of activities",
-  //     listOfActivitiesMessage
-  //   );
-  //   const listOfActivitiesResponse = await model.call([
-  //     listOfActivitiesMessage,
-  //   ]);
-  //   const listOfActivitiesResponseText = listOfActivitiesResponse.text;
-  //   console.log(
-  //     "Got list of activities response:",
-  //     listOfActivitiesResponseText
-  //   );
+    const prompt = new PromptTemplate({
+      template:
+        '{ideas_premise}\n{format_instructions}\nUser Persona:\n+++\n{user_persona}\n+++\nPlan:\n"""\n{plan}\n"""',
+      inputVariables: [
+        "ideas_premise",
+        "format_instructions",
+        "user_persona",
+        "plan",
+      ],
+    });
 
-  //   // const mergePromptTemplate = new PromptTemplate({
-  //   //   template:
-  //   //     '{merge_premise}\n{format_instructions}\n---\n{list_of_activities}\n---\n"""\n{message}\n"""',
-  //   //   inputVariables: [
-  //   //     "merge_premise",
-  //   //     "format_instructions",
-  //   //     "list_of_activities",
-  //   //     "message",
-  //   //   ],
-  //   // });
-  //   // const mergePremise = `Incorporate the list of ideas delimited by +++ below into the plan in the message delimited by """ below.`;
-  //   // const mergePrompt = await mergePromptTemplate.format({
-  //   //   merge_premise: mergePremise,
-  //   //   format_instructions: formatInstructions,
-  //   //   list_of_activities: listOfActivitiesResponseText,
-  //   //   message: JSON.stringify(seraResponse),
-  //   // });
-  //   // const mergeMessage = new SystemChatMessage(mergePrompt);
-  //   // console.log(
-  //   //   "Calling OpenAI to merge list of activities into plan",
-  //   //   mergeMessage
-  //   // );
-  //   // const mergeResponse = await model.call([mergeMessage]);
-  //   // const mergeStrippedResponse = stripAIPrefixFromResponse(mergeResponse.text);
-  //   // const mergePreambleStrippedResponse = stripPreambleFromResponse(
-  //   //   mergeStrippedResponse
-  //   // );
-  //   // const mergeCleanedResponse = cleanResponse(mergePreambleStrippedResponse);
-  //   // const mergeResponseJson = JSON.parse(mergeCleanedResponse);
-  //   // console.log("mergeResponseJson after cleanup", mergeResponseJson);
-  // }
+    const planWithIdeasParser =
+      StructuredOutputParser.fromZodSchema(_planWithIdeas);
+    const formatInstructions = planWithIdeasParser.getFormatInstructions();
+    const planWithIdeasInput = await prompt.format({
+      ideas_premise: ideasPremise,
+      format_instructions: formatInstructions,
+      user_persona: userPersonaResponseText,
+      plan: JSON.stringify(seraResponse.plan, null, 2),
+    });
+    const planWithIdeasRequestMessage = new SystemChatMessage(
+      planWithIdeasInput
+    );
 
+    console.log(
+      "Calling OpenAI to add ideas to the plan",
+      planWithIdeasRequestMessage
+    );
+
+    // Calls OpenAI
+    const planWithIdeasResponse = await model.call([
+      planWithIdeasRequestMessage,
+    ]);
+
+    console.log("Got planWithIdeasResponse from OpenAI", planWithIdeasResponse);
+
+    const aiStrippedResponse2 = stripAIPrefixFromResponse(
+      planWithIdeasResponse.text
+    );
+    const preambleStrippedResponse2 =
+      stripPreambleFromResponse(aiStrippedResponse2);
+    const cleanedResponse2 = cleanResponse(preambleStrippedResponse2);
+    const planJson = JSON.parse(cleanedResponse2);
+
+    console.log(
+      "Substituting plan without ideas for plan with ideas",
+      JSON.stringify(planJson, null, 2)
+    );
+
+    seraResponse.plan = planJson.plan;
+  }
+
+  // TODO: replace aiChatMessage with an updated version of the message that includes the ideas
   await _internals.createChatLine(supabaseClient, aiChatMessage, chat);
 
   console.log("Returning processed response from LLM:", seraResponse);
