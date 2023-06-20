@@ -107,29 +107,32 @@ const _responseWithJsonSchema: ZodTypeAny = z.object({
   text: z
     .string()
     .describe(
-      "An AI message to send to the user about the plan, formatted in Markdown"
+      "An AI message to send to the user about the plan, formatted in Markdown."
     ),
   question: z
     .string()
     .describe(
-      "An AI message asking the user if the plan is right for them and if they can do the steps, formatted in Markdown"
+      "An AI message asking the user if the plan is right for them and if they can do the steps, formatted in Markdown."
     ),
   plan: z
     .object({
       goal: z
         .string()
         .describe(
-          "The specific, measurable, achievable, relevant, and time-bound goal of the plan that starts with a verb"
+          "The specific, measurable, achievable, relevant, and time-bound goal of the plan that starts with a verb."
         ),
       steps: z
         .array(
           z.object({
-            number: z.number().describe("The number of the step"),
-            action: z
-              .string()
-              .describe(
-                "The description of the step. This should be specific, measurable, achievable, relevant, and time-bound."
-              ),
+            number: z.number().describe("The number of the step."),
+            action: z.object({
+              name: z.string().describe("The name of the action."),
+              description: z
+                .string()
+                .describe(
+                  "The description of the action. This should be specific, measurable, achievable, relevant, and time-bound."
+                ),
+            }),
           })
         )
         .describe("The steps of the plan"),
@@ -140,31 +143,11 @@ const _responseWithJsonSchema: ZodTypeAny = z.object({
 });
 
 // This is the hard-coded output from the StructuredOutputParser for the above schema
+// It is long and it would be easier to read it if it were formatted as a template literal, but that would make it harder to update
 // TODO: refactor to use variables for _responseWithJsonSchema and format_instructions so that
 //       they remain in sync
-const format_instructions =
-  `You must format your output as a JSON value that adheres to a given "JSON Schema" instance.\n\n"JSON Schema" is a ` +
-  `declarative language that allows you to annotate and validate JSON documents.\n\nFor example, the example ` +
-  `"JSON Schema" instance { { "properties": { { "foo": { { "description": "a list of test words", "type": ` +
-  `"array", "items": { { "type": "string" } } } } } }, "required": ["foo"] } }}}\nwould match an object with ` +
-  `one required property, "foo".The "type" property specifies "foo" must be an "array", and the "description" ` +
-  `property semantically describes it as "a list of test words".The items within "foo" must be strings.\nThus, ` +
-  `the object { { "foo": ["bar", "baz"] } } is a well - formatted instance of this example "JSON Schema". ` +
-  `The object { { "properties": { { "foo": ["bar", "baz"] } } } } is not well - formatted.\n\nYour output will ` +
-  `be parsed and type - checked according to the provided schema instance, so make sure all fields in your output ` +
-  `match the schema exactly and there are no trailing commas!\n\nHere is the JSON Schema instance your output must ` +
-  `adhere to.Include the enclosing markdown codeblock: \n\`\`\`json\n{"type":"object","properties":{"text":{"type":` +
-  `"string","description": "An AI message to send to the user about the plan, formatted in Markdown."}, "question": ` +
-  `{ "type": "string", "description": "An AI message asking the user if the plan is right for them and if they can ` +
-  `do the steps, formatted in Markdown" }, "plan": { "type": "object", "properties": { "goal": { "type": "string", ` +
-  `"description": "The specific, measurable, achievable, relevant, and time - bound goal of the plan that starts ` +
-  `with a verb" }, "steps": { "type": "array", "items": { "type": "object", "properties": { "number": { "type": ` +
-  `"number", "description": "The number of the step" }, "action": { "type": "string", "description": "The description ` +
-  `of the step.This should be specific, measurable, achievable, relevant, and time - bound." } }, "required": ` +
-  `["number", "action"], "additionalProperties": false }, "description": "The steps of the plan" } }, "required": ` +
-  `["goal", "steps"], "additionalProperties": false, "description": "An action plan to manage the financial aspects ` +
-  `of a user request." }}, "required": ["text", "question", "plan"], "additionalProperties": false, "$schema": ` +
-  `"http://json-schema.org/draft-07/schema#"}\n\`\`\`\n`;
+const formatInstructions =
+  'You must format your output as a JSON value that adheres to a given "JSON Schema" instance.\n\n"JSON Schema" is a declarative language that allows you to annotate and validate JSON documents.\n\nFor example, the example "JSON Schema" instance {{"properties": {{"foo": {{"description": "a list of test words", "type": "array", "items": {{"type": "string"}}}}}}, "required": ["foo"]}}}}\nwould match an object with one required property, "foo". The "type" property specifies "foo" must be an "array", and the "description" property semantically describes it as "a list of test words". The items within "foo" must be strings.\nThus, the object {{"foo": ["bar", "baz"]}} is a well-formatted instance of this example "JSON Schema". The object {{"properties": {{"foo": ["bar", "baz"]}}}} is not well-formatted.\n\nYour output will be parsed and type-checked according to the provided schema instance, so make sure all fields in your output match the schema exactly and there are no trailing commas!\n\nHere is the JSON Schema instance your output must adhere to. Include the enclosing markdown codeblock:\n```json\n{"type":"object","properties":{"text":{"type":"string","description":"An AI message to send to the user about the plan, formatted in Markdown."},"question":{"type":"string","description":"An AI message asking the user if the plan is right for them and if they can do the steps, formatted in Markdown."},"plan":{"type":"object","properties":{"goal":{"type":"string","description":"The specific, measurable, achievable, relevant, and time-bound goal of the plan that starts with a verb."},"steps":{"type":"array","items":{"type":"object","properties":{"number":{"type":"number","description":"The number of the step."},"action":{"type":"object","properties":{"name":{"type":"string","description":"The name of the action."},"description":{"type":"string","description":"The description of the action. This should be specific, measurable, achievable, relevant, and time-bound."}},"required":["name","description"],"additionalProperties":false}},"required":["number","action"],"additionalProperties":false},"description":"The steps of the plan"}},"required":["goal","steps"],"additionalProperties":false,"description":"An action plan to manage the financial aspects of a user request."}},"required":["text","question","plan"],"additionalProperties":false,"$schema":"http://json-schema.org/draft-07/schema#"}\n```\n';
 
 // TODO: test
 function stripAIPrefixFromResponse(response: string): string {
@@ -226,13 +209,12 @@ function convertToSeraResponse(response: string, chat: number): SeraResponse {
   const seraResponse = {
     ...responseJson,
     chat: chat,
-  }
+  };
 
   console.log("Converted to seraResponse:", JSON.stringify(seraResponse));
 
   return seraResponse;
 }
-
 
 export async function handleRequest(
   model: ChatOpenAI,
@@ -263,7 +245,7 @@ export async function handleRequest(
   const mappedMessages = messages.map((m) => m._getType() + ": " + m.text);
   const input = await prompt.format({
     premise: premise,
-    format_instructions: format_instructions,
+    format_instructions: formatInstructions,
     messages: mappedMessages.join("\n"),
   });
   const planRequestMessage = new SystemChatMessage(input);
