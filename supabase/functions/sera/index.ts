@@ -13,8 +13,22 @@ serve(async (request: Request) => {
     const seraRequest = await request.json();
     const responseFromSera = await sera.handleRequest(seraRequest);
 
+    const body = new ReadableStream({
+      start(controller) {
+        const text = JSON.stringify(responseFromSera);
+        const encoder = new TextEncoder();
+
+        // Convert the JSON string to Uint8Array
+        const data = encoder.encode(text);
+
+        // Push the data into the stream
+        controller.enqueue(data);
+        controller.close();
+      },
+    });
+
     console.log("Responding with:", responseFromSera);
-    return new Response(JSON.stringify(responseFromSera), {
+    return new Response(body, {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
