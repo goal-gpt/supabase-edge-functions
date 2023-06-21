@@ -14,8 +14,8 @@ export class Sera {
   // TODO: determine if this name is good
   async handleRequest(seraRequest: SeraRequest): Promise<PlanArtifacts> {
     console.log("Handling request:", seraRequest);
-    const supabaseClient = _supabaseClientInternals.createClient();
     const model = _llmInternals.getChatOpenAI();
+    const supabaseClient = _supabaseClientInternals.createClient();
 
     const planArtifacts =
       await _privilegedRequestHandlerInternals.handleRequest(
@@ -32,6 +32,7 @@ export class Sera {
   ): Promise<PlanArtifacts> {
     console.log("Handling adding ideas to plan:", planArtifacts);
     const model = _llmInternals.getChatOpenAI();
+    const supabaseClient = _supabaseClientInternals.createClient();
 
     const plan = await _privilegedRequestHandlerInternals.addIdeasToPlan(
       model,

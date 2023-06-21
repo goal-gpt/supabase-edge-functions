@@ -49,16 +49,39 @@ async function getAllChatLines(
 async function createChatLine(
   supabaseClient: SupabaseClient<Database>,
   message: BaseChatMessage,
-  chat?: number,
-) {
+  chat: number,
+): Promise<number> {
   console.log("Creating chat line", message.text, chat);
 
-  const { data: chatLine, error } = await supabaseClient
+  const { data, error } = await supabaseClient
     .from("chat_line")
     .insert({ chat: chat, message: message.text, sender: message._getType() })
     .select();
+
   if (error) throw error;
-  console.log("Created chat line", chatLine);
+
+  const chatLine = data[0].id;
+
+  console.log("Created chatLine", chatLine);
+
+  return chatLine;
+}
+
+async function updateChatLineMessage(
+  supabaseClient: SupabaseClient<Database>,
+  chatLine: number,
+  messageText: string
+) {
+  console.log("Updating chat line", chatLine, messageText);
+
+  const { error } = await supabaseClient
+    .from("chat_line")
+    .update({ message: messageText })
+    .eq("id", chatLine)
+    .select();
+
+  if (error) throw error;
+  console.log("Updated chat line", chatLine);
 }
 
 async function createChat(
@@ -69,6 +92,7 @@ async function createChat(
   if (error) throw error;
 
   const chat = data[0].id;
+
   console.log("Created chat", chat);
   return chat;
 }
@@ -92,6 +116,7 @@ export interface SeraResponse {
 export interface PlanArtifacts {
   seraResponse: SeraResponse;
   userPersona: string;
+  chatLine: number;
 }
 
 export const premise =
@@ -303,6 +328,8 @@ export async function handleRequest(
   supabaseClient: SupabaseClient<Database>,
   request: SeraRequest
 ): Promise<PlanArtifacts> {
+  console.log("Handling request");
+
   const messages: BaseChatMessage[] = [];
   const message = request.message;
   let chat = request.chat;
@@ -376,78 +403,28 @@ export async function handleRequest(
   // Calls OpenAI
   const response = await model.call([planRequestMessage]);
   const aiChatMessage = new AIChatMessage(response.text);
+  const aiChatLine = await _internals.createChatLine(
+    supabaseClient,
+    aiChatMessage,
+    chat
+  );
   const seraResponse = convertToSeraResponse(aiChatMessage.text, chat);
 
-  // // Merge list of activities into plan
-  // if (seraResponse.plan) {
-  //   const ideasPremise =
-  //     `You are an empathetic, emotionally-aware, and imaginative AI personal finance guide. ` +
-  //     `You are very creative and open-minded when it comes to finding financial aspects to requests. ` +
-  //     `You have determined the persona of the user, delimited by +++ below. ` +
-  //     `You have created a plan for the user, delimited by """ below. ` +
-  //     `Your task is to add ideas to the plan. ` +
-  //     `Do not change the goal or the steps.`;
+  // Update chat line with processed response
+  const processedResponse = JSON.stringify(seraResponse);
 
-  //   const prompt = new PromptTemplate({
-  //     template:
-  //       '{ideas_premise}\n{format_instructions}\nUser Persona:\n+++\n{user_persona}\n+++\nPlan:\n"""\n{plan}\n"""',
-  //     inputVariables: [
-  //       "ideas_premise",
-  //       "format_instructions",
-  //       "user_persona",
-  //       "plan",
-  //     ],
-  //   });
-
-  //   const planWithIdeasParser =
-  //     StructuredOutputParser.fromZodSchema(_planWithIdeas);
-  //   const formatInstructions = planWithIdeasParser.getFormatInstructions();
-  //   const planWithIdeasInput = await prompt.format({
-  //     ideas_premise: ideasPremise,
-  //     format_instructions: formatInstructions,
-  //     user_persona: userPersonaResponseText,
-  //     plan: JSON.stringify(seraResponse.plan, null, 2),
-  //   });
-  //   const planWithIdeasRequestMessage = new SystemChatMessage(
-  //     planWithIdeasInput
-  //   );
-
-  //   console.log(
-  //     "Calling OpenAI to add ideas to the plan",
-  //     planWithIdeasRequestMessage
-  //   );
-
-  //   // Calls OpenAI
-  //   const planWithIdeasResponse = await model.call([
-  //     planWithIdeasRequestMessage,
-  //   ]);
-
-  //   console.log("Got planWithIdeasResponse from OpenAI", planWithIdeasResponse);
-
-  //   const aiStrippedResponse2 = stripAIPrefixFromResponse(
-  //     planWithIdeasResponse.text
-  //   );
-  //   const preambleStrippedResponse2 =
-  //     stripPreambleFromResponse(aiStrippedResponse2);
-  //   const cleanedResponse2 = cleanResponse(preambleStrippedResponse2);
-  //   const planJson = JSON.parse(cleanedResponse2);
-
-  //   console.log(
-  //     "Substituting plan without ideas for plan with ideas",
-  //     JSON.stringify(planJson, null, 2)
-  //   );
-
-  //   seraResponse.plan = planJson.plan;
-  // }
-
-  // TODO: replace aiChatMessage with an updated version of the message that includes the ideas
-  await _internals.createChatLine(supabaseClient, aiChatMessage, chat);
+  await _internals.updateChatLineMessage(
+    supabaseClient,
+    aiChatLine,
+    processedResponse
+  );
 
   console.log("Returning processed response from LLM:", seraResponse);
 
   const planArtifacts = {
     seraResponse: seraResponse,
     userPersona: userPersonaResponseText,
+    chatLine: aiChatLine,
   };
 
   return planArtifacts;
@@ -455,9 +432,11 @@ export async function handleRequest(
 
 export async function addIdeasToPlan(
   model: ChatOpenAI,
-  planArtifacts: PlanArtifacts
+  supabaseClient: SupabaseClient<Database>,
+  planArtifacts: PlanArtifacts,
 ): Promise<Plan> {
-  // Merge list of activities into plan
+  console.log("Adding ideas to plan");
+
   const ideasPremise =
     `You are an empathetic, emotionally-aware, and imaginative AI personal finance guide. ` +
     `You are very creative and open-minded when it comes to finding financial aspects to requests. ` +
@@ -504,11 +483,21 @@ export async function addIdeasToPlan(
   const preambleStrippedResponse2 =
     stripPreambleFromResponse(aiStrippedResponse2);
   const cleanedResponse2 = cleanResponse(preambleStrippedResponse2);
-  const planWithIdeas = JSON.parse(cleanedResponse2);
+  const planWithIdeas = JSON.parse(cleanedResponse2).plan;
 
   console.log(
     "Substituting plan without ideas for plan with ideas",
     JSON.stringify(planWithIdeas, null, 2)
+  );
+
+  // Update chat line plan with ideas
+  planArtifacts.seraResponse.plan = planWithIdeas;
+  const processedResponse = JSON.stringify(planArtifacts.seraResponse);
+
+  await _internals.updateChatLineMessage(
+    supabaseClient,
+    planArtifacts.chatLine,
+    processedResponse
   );
 
   return planWithIdeas;
@@ -521,4 +510,5 @@ export const _internals = {
   createChatLine,
   getAllChatLines,
   addIdeasToPlan,
+  updateChatLineMessage,
 };
