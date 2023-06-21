@@ -4,7 +4,7 @@ import {
   premise,
 } from "./privilegedRequestHandler.ts";
 import { _internals as _supabaseClientInternals } from "../_shared/supabase-client.ts";
-import { _internals as _llmInternals } from "./llm.ts";
+import { _internals as _llmInternals } from "../_shared/llm.ts";
 import { SeraRequest } from "./sera.ts";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { ChatOpenAI } from "langchain/chat_models/openai";
@@ -27,8 +27,7 @@ Deno.test("handleRequest", async (t) => {
     "job fairs to expand your opportunities. Once you have identified potential job openings, tailor your resume and " +
     "cover letter to each position to increase your chances of getting hired. Finally, prepare for interviews by " +
     "researching the company and practicing common interview questions. Good luck with your job search! ";
-  const modelResponseJsonString =
-    "\n\n{\n    " +
+  const modelResponseJsonString = "\n\n{\n    " +
     '"text": "I suggest starting by creating a budget to determine how much money you can allocate towards job searching. ' +
     "Then, research companies and job openings that match your skills and interests. You can use job search websites like " +
     "Indeed or LinkedIn to find job postings. Additionally, consider reaching out to your network and attending job fairs " +
@@ -49,7 +48,7 @@ Deno.test("handleRequest", async (t) => {
   const modelResponseJson = JSON.parse(modelResponseJsonString);
   const modelStubWithCall = sinon.createStubInstance(ChatOpenAI, {
     call: new AIChatMessage(
-      `${modelResponsePreamble}${modelResponseJsonString}`
+      `${modelResponsePreamble}${modelResponseJsonString}`,
     ),
   });
 
@@ -65,23 +64,26 @@ Deno.test("handleRequest", async (t) => {
       const createChatStub = stub(
         _privilegedRequestHandlerInternals,
         "createChat",
-        returnsNext([chatPromise])
+        returnsNext([chatPromise]),
       );
       const createChatLineStub = stub(
         _privilegedRequestHandlerInternals,
-        "createChatLine"
+        "createChatLine",
       );
 
       const response = await _privilegedRequestHandlerInternals.handleRequest(
         modelStubWithCall,
         supabaseClientStub,
-        seraRequest
+        seraRequest,
       );
 
       assertSpyCalls(createChatStub, 1);
       assertSpyCalls(createChatLineStub, 2);
       assertStrictEquals(response.text, modelResponseJson.text);
-      assertStrictEquals(JSON.stringify(response.plan), JSON.stringify(modelResponseJson.plan));
+      assertStrictEquals(
+        JSON.stringify(response.plan),
+        JSON.stringify(modelResponseJson.plan),
+      );
       assertStrictEquals(response.question, modelResponseJson.question);
       assertEquals(response.chat, chat);
 
@@ -96,12 +98,12 @@ Deno.test("handleRequest", async (t) => {
     const chatLinesPromise: Promise<BaseChatMessage[]> = new Promise(
       (resolve) => {
         resolve(chatLines);
-      }
+      },
     );
     const getAllChatLinesStub = stub(
       _privilegedRequestHandlerInternals,
       "getAllChatLines",
-      returnsNext([chatLinesPromise])
+      returnsNext([chatLinesPromise]),
     );
 
     const seraRequest: SeraRequest = {
@@ -112,7 +114,7 @@ Deno.test("handleRequest", async (t) => {
     await _privilegedRequestHandlerInternals.handleRequest(
       modelStubWithCall,
       supabaseClientStub,
-      seraRequest
+      seraRequest,
     );
 
     assertSpyCalls(getAllChatLinesStub, 1);
