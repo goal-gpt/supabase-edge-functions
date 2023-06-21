@@ -1,6 +1,6 @@
 import {
   _internals as _privilegedRequestHandlerInternals,
-  SeraResponse,
+  PlanArtifacts,
 } from "./privilegedRequestHandler.ts";
 import { _internals as _supabaseClientInternals } from "../_shared/supabaseClient.ts";
 import { _internals as _llmInternals } from "../_shared/llm.ts";
@@ -12,15 +12,35 @@ export interface SeraRequest {
 
 export class Sera {
   // TODO: determine if this name is good
-  async handleRequest(seraRequest: SeraRequest): Promise<SeraResponse> {
+  async handleRequest(seraRequest: SeraRequest): Promise<PlanArtifacts> {
     console.log("Handling request:", seraRequest);
     const supabaseClient = _supabaseClientInternals.createClient();
     const model = _llmInternals.getChatOpenAI();
 
-    return await _privilegedRequestHandlerInternals.handleRequest(
+    const planArtifacts =
+      await _privilegedRequestHandlerInternals.handleRequest(
+        model,
+        supabaseClient,
+        seraRequest
+      );
+
+    return planArtifacts;
+  }
+
+  async handleAddingIdeasToPlan(
+    planArtifacts: PlanArtifacts
+  ): Promise<PlanArtifacts> {
+    console.log("Handling adding ideas to plan:", planArtifacts);
+    const model = _llmInternals.getChatOpenAI();
+
+    const plan = await _privilegedRequestHandlerInternals.addIdeasToPlan(
       model,
       supabaseClient,
-      seraRequest,
+      planArtifacts
     );
+
+    planArtifacts.seraResponse.plan = plan;
+
+    return planArtifacts;
   }
 }

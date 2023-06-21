@@ -85,9 +85,13 @@ export interface Plan {
 
 export interface SeraResponse {
   text: string;
-  question?: string;
   chat: number;
   plan?: Plan;
+}
+
+export interface PlanArtifacts {
+  seraResponse: SeraResponse;
+  userPersona: string;
 }
 
 export const premise =
@@ -297,8 +301,8 @@ function convertToSeraResponse(response: string, chat: number): SeraResponse {
 export async function handleRequest(
   model: ChatOpenAI,
   supabaseClient: SupabaseClient<Database>,
-  request: SeraRequest,
-): Promise<SeraResponse> {
+  request: SeraRequest
+): Promise<PlanArtifacts> {
   const messages: BaseChatMessage[] = [];
   const message = request.message;
   let chat = request.chat;
@@ -374,73 +378,140 @@ export async function handleRequest(
   const aiChatMessage = new AIChatMessage(response.text);
   const seraResponse = convertToSeraResponse(aiChatMessage.text, chat);
 
-  // Merge list of activities into plan
-  if (seraResponse.plan) {
-    const ideasPremise =
-      `You are an empathetic, emotionally-aware, and imaginative AI personal finance guide. ` +
-      `You are very creative and open-minded when it comes to finding financial aspects to requests. ` +
-      `You have determined the persona of the user, delimited by +++ below. ` +
-      `You have created a plan for the user, delimited by """ below. ` +
-      `Your task is to add ideas to the plan. ` +
-      `Do not change the goal or the steps.`;
+  // // Merge list of activities into plan
+  // if (seraResponse.plan) {
+  //   const ideasPremise =
+  //     `You are an empathetic, emotionally-aware, and imaginative AI personal finance guide. ` +
+  //     `You are very creative and open-minded when it comes to finding financial aspects to requests. ` +
+  //     `You have determined the persona of the user, delimited by +++ below. ` +
+  //     `You have created a plan for the user, delimited by """ below. ` +
+  //     `Your task is to add ideas to the plan. ` +
+  //     `Do not change the goal or the steps.`;
 
-    const prompt = new PromptTemplate({
-      template:
-        '{ideas_premise}\n{format_instructions}\nUser Persona:\n+++\n{user_persona}\n+++\nPlan:\n"""\n{plan}\n"""',
-      inputVariables: [
-        "ideas_premise",
-        "format_instructions",
-        "user_persona",
-        "plan",
-      ],
-    });
+  //   const prompt = new PromptTemplate({
+  //     template:
+  //       '{ideas_premise}\n{format_instructions}\nUser Persona:\n+++\n{user_persona}\n+++\nPlan:\n"""\n{plan}\n"""',
+  //     inputVariables: [
+  //       "ideas_premise",
+  //       "format_instructions",
+  //       "user_persona",
+  //       "plan",
+  //     ],
+  //   });
 
-    const planWithIdeasParser =
-      StructuredOutputParser.fromZodSchema(_planWithIdeas);
-    const formatInstructions = planWithIdeasParser.getFormatInstructions();
-    const planWithIdeasInput = await prompt.format({
-      ideas_premise: ideasPremise,
-      format_instructions: formatInstructions,
-      user_persona: userPersonaResponseText,
-      plan: JSON.stringify(seraResponse.plan, null, 2),
-    });
-    const planWithIdeasRequestMessage = new SystemChatMessage(
-      planWithIdeasInput
-    );
+  //   const planWithIdeasParser =
+  //     StructuredOutputParser.fromZodSchema(_planWithIdeas);
+  //   const formatInstructions = planWithIdeasParser.getFormatInstructions();
+  //   const planWithIdeasInput = await prompt.format({
+  //     ideas_premise: ideasPremise,
+  //     format_instructions: formatInstructions,
+  //     user_persona: userPersonaResponseText,
+  //     plan: JSON.stringify(seraResponse.plan, null, 2),
+  //   });
+  //   const planWithIdeasRequestMessage = new SystemChatMessage(
+  //     planWithIdeasInput
+  //   );
 
-    console.log(
-      "Calling OpenAI to add ideas to the plan",
-      planWithIdeasRequestMessage
-    );
+  //   console.log(
+  //     "Calling OpenAI to add ideas to the plan",
+  //     planWithIdeasRequestMessage
+  //   );
 
-    // Calls OpenAI
-    const planWithIdeasResponse = await model.call([
-      planWithIdeasRequestMessage,
-    ]);
+  //   // Calls OpenAI
+  //   const planWithIdeasResponse = await model.call([
+  //     planWithIdeasRequestMessage,
+  //   ]);
 
-    console.log("Got planWithIdeasResponse from OpenAI", planWithIdeasResponse);
+  //   console.log("Got planWithIdeasResponse from OpenAI", planWithIdeasResponse);
 
-    const aiStrippedResponse2 = stripAIPrefixFromResponse(
-      planWithIdeasResponse.text
-    );
-    const preambleStrippedResponse2 =
-      stripPreambleFromResponse(aiStrippedResponse2);
-    const cleanedResponse2 = cleanResponse(preambleStrippedResponse2);
-    const planJson = JSON.parse(cleanedResponse2);
+  //   const aiStrippedResponse2 = stripAIPrefixFromResponse(
+  //     planWithIdeasResponse.text
+  //   );
+  //   const preambleStrippedResponse2 =
+  //     stripPreambleFromResponse(aiStrippedResponse2);
+  //   const cleanedResponse2 = cleanResponse(preambleStrippedResponse2);
+  //   const planJson = JSON.parse(cleanedResponse2);
 
-    console.log(
-      "Substituting plan without ideas for plan with ideas",
-      JSON.stringify(planJson, null, 2)
-    );
+  //   console.log(
+  //     "Substituting plan without ideas for plan with ideas",
+  //     JSON.stringify(planJson, null, 2)
+  //   );
 
-    seraResponse.plan = planJson.plan;
-  }
+  //   seraResponse.plan = planJson.plan;
+  // }
 
   // TODO: replace aiChatMessage with an updated version of the message that includes the ideas
   await _internals.createChatLine(supabaseClient, aiChatMessage, chat);
 
   console.log("Returning processed response from LLM:", seraResponse);
-  return seraResponse;
+
+  const planArtifacts = {
+    seraResponse: seraResponse,
+    userPersona: userPersonaResponseText,
+  };
+
+  return planArtifacts;
+}
+
+export async function addIdeasToPlan(
+  model: ChatOpenAI,
+  planArtifacts: PlanArtifacts
+): Promise<Plan> {
+  // Merge list of activities into plan
+  const ideasPremise =
+    `You are an empathetic, emotionally-aware, and imaginative AI personal finance guide. ` +
+    `You are very creative and open-minded when it comes to finding financial aspects to requests. ` +
+    `You have determined the persona of the user, delimited by +++ below. ` +
+    `You have created a plan for the user, delimited by """ below. ` +
+    `Your task is to add ideas to the plan. ` +
+    `Do not change the goal or the steps.`;
+
+  const prompt = new PromptTemplate({
+    template:
+      '{ideas_premise}\n{format_instructions}\nUser Persona:\n+++\n{user_persona}\n+++\nPlan:\n"""\n{plan}\n"""',
+    inputVariables: [
+      "ideas_premise",
+      "format_instructions",
+      "user_persona",
+      "plan",
+    ],
+  });
+
+  const planWithIdeasParser =
+    StructuredOutputParser.fromZodSchema(_planWithIdeas);
+  const formatInstructions = planWithIdeasParser.getFormatInstructions();
+  const planWithIdeasInput = await prompt.format({
+    ideas_premise: ideasPremise,
+    format_instructions: formatInstructions,
+    user_persona: planArtifacts.userPersona,
+    plan: JSON.stringify(planArtifacts.seraResponse.plan, null, 2),
+  });
+  const planWithIdeasRequestMessage = new SystemChatMessage(planWithIdeasInput);
+
+  console.log(
+    "Calling OpenAI to add ideas to the plan",
+    planWithIdeasRequestMessage
+  );
+
+  // Calls OpenAI
+  const planWithIdeasResponse = await model.call([planWithIdeasRequestMessage]);
+
+  console.log("Got planWithIdeasResponse from OpenAI", planWithIdeasResponse);
+
+  const aiStrippedResponse2 = stripAIPrefixFromResponse(
+    planWithIdeasResponse.text
+  );
+  const preambleStrippedResponse2 =
+    stripPreambleFromResponse(aiStrippedResponse2);
+  const cleanedResponse2 = cleanResponse(preambleStrippedResponse2);
+  const planWithIdeas = JSON.parse(cleanedResponse2);
+
+  console.log(
+    "Substituting plan without ideas for plan with ideas",
+    JSON.stringify(planWithIdeas, null, 2)
+  );
+
+  return planWithIdeas;
 }
 
 // _internals are used for testing
@@ -449,4 +520,5 @@ export const _internals = {
   createChat,
   createChatLine,
   getAllChatLines,
+  addIdeasToPlan,
 };
