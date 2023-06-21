@@ -8,12 +8,12 @@ import {
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "../../types/supabase.ts";
 import { SeraRequest } from "./sera.ts";
-import { ZodTypeAny, z } from "zod";
+import { z, ZodTypeAny } from "zod";
 import { PromptTemplate } from "langchain/prompts";
 
 async function getAllChatLines(
   supabaseClient: SupabaseClient<Database>,
-  chat: number
+  chat: number,
 ): Promise<BaseChatMessage[]> {
   console.log("Getting all chat lines", chat);
   const { data, error } = await supabaseClient
@@ -48,7 +48,7 @@ async function getAllChatLines(
 async function createChatLine(
   supabaseClient: SupabaseClient<Database>,
   message: BaseChatMessage,
-  chat?: number
+  chat?: number,
 ) {
   console.log("Creating chat line", message.text, chat);
 
@@ -61,7 +61,7 @@ async function createChatLine(
 }
 
 async function createChat(
-  supabaseClient: SupabaseClient<Database>
+  supabaseClient: SupabaseClient<Database>,
 ): Promise<number> {
   console.log("Creating chat");
   const { data, error } = await supabaseClient.from("chat").insert({}).select();
@@ -74,7 +74,7 @@ async function createChat(
 
 export interface Step {
   number: number;
-  action: string;
+  action: string; // TODO: convert to {name: string, description: string}? Although it doesn't appear used beyond this file
 }
 
 export interface Plan {
@@ -107,19 +107,19 @@ const _responseWithJsonSchema: ZodTypeAny = z.object({
   text: z
     .string()
     .describe(
-      "An AI message to send to the user about the plan, formatted in Markdown."
+      "An AI message to send to the user about the plan, formatted in Markdown.",
     ),
   question: z
     .string()
     .describe(
-      "An AI message asking the user if the plan is right for them and if they can do the steps, formatted in Markdown."
+      "An AI message asking the user if the plan is right for them and if they can do the steps, formatted in Markdown.",
     ),
   plan: z
     .object({
       goal: z
         .string()
         .describe(
-          "The specific, measurable, achievable, relevant, and time-bound goal of the plan that starts with a verb."
+          "The specific, measurable, achievable, relevant, and time-bound goal of the plan that starts with a verb.",
         ),
       steps: z
         .array(
@@ -130,15 +130,15 @@ const _responseWithJsonSchema: ZodTypeAny = z.object({
               description: z
                 .string()
                 .describe(
-                  "The description of the action. This should be specific, measurable, achievable, relevant, and time-bound."
+                  "The description of the action. This should be specific, measurable, achievable, relevant, and time-bound.",
                 ),
             }),
-          })
+          }),
         )
         .describe("The steps of the plan"),
     })
     .describe(
-      "An action plan to manage the financial aspects of a user request."
+      "An action plan to manage the financial aspects of a user request.",
     ),
 });
 
@@ -184,10 +184,9 @@ function cleanResponse(response: string): string {
   if (badPrefixIndex === -1 && badSuffixIndex === -1) {
     return response;
   } else {
-    const cleanedResponse =
-      badPrefixIndex === -1 && badSuffixIndex === -1
-        ? response
-        : response.substring(badPrefixIndex + 8, badSuffixIndex);
+    const cleanedResponse = badPrefixIndex === -1 && badSuffixIndex === -1
+      ? response
+      : response.substring(badPrefixIndex + 8, badSuffixIndex);
 
     console.log("Cleaned response:", cleanedResponse);
     return cleanedResponse;
@@ -219,7 +218,7 @@ function convertToSeraResponse(response: string, chat: number): SeraResponse {
 export async function handleRequest(
   model: ChatOpenAI,
   supabaseClient: SupabaseClient<Database>,
-  request: SeraRequest
+  request: SeraRequest,
 ): Promise<SeraResponse> {
   const messages: BaseChatMessage[] = [];
   const message = request.message;
@@ -256,8 +255,9 @@ export async function handleRequest(
   const response = await model.call([planRequestMessage]);
   const aiChatMessage = new AIChatMessage(response.text);
   const aiStrippedResponse = stripAIPrefixFromResponse(response.text);
-  const preambleStrippedResponse =
-    stripPreambleFromResponse(aiStrippedResponse);
+  const preambleStrippedResponse = stripPreambleFromResponse(
+    aiStrippedResponse,
+  );
   const cleanedResponse = cleanResponse(preambleStrippedResponse);
   const seraResponse = convertToSeraResponse(cleanedResponse, chat);
 

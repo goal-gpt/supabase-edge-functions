@@ -1,6 +1,47 @@
 import { _internals as _supabaseClientInternals } from "../_shared/supabase-client.ts";
 import { _internals as _llmInternals } from "../_shared/llm.ts";
-import { DOMParser } from "https://deno.land/x/deno_dom@v0.1.38/deno-dom-wasm.ts";
+import { corsHeaders } from "../_shared/cors.ts";
+import { serve } from "http/server.ts";
+
+serve(async (request: Request) => {
+  try {
+    if (request.method === "OPTIONS") {
+      console.log("Handling CORS preflight request");
+      return new Response("ok", { headers: corsHeaders });
+    }
+
+    const contentRequest = await request.json();
+    const responseFromContent = await handler(
+      contentRequest.url,
+      contentRequest.userId,
+    );
+
+    return new Response(JSON.stringify(responseFromContent), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (error) {
+    console.error(error);
+
+    return new Response(JSON.stringify({ error: error.message }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 400,
+    });
+  }
+});
+
+async function handler(url: string, userId: string) {
+  try {
+    const { data } = await scrapeAndSaveLink(url, userId);
+    console.log("Content saved: ", data);
+
+    // Generate an embedding for the saved content
+    await generateEmbeddings(data[0]?.id);
+    console.log("Embedding generated");
+  } catch (error) {
+    console.error("Error saving content:", error);
+    throw error;
+  }
+}
 
 async function scrapeAndSaveLink(url: string, userId: string) {
   const supabaseClient = _supabaseClientInternals.createClient();
@@ -10,21 +51,30 @@ async function scrapeAndSaveLink(url: string, userId: string) {
   const html = await res.text();
 
   // Parse the HTML to get the title
-  const doc = new DOMParser().parseFromString(html, "text/html");
-  const title = doc?.querySelector("title")?.textContent || "";
-
+  const titleMatch = html.match(/<title>(.*?)<\/title>/i);
+  const title = titleMatch ? titleMatch[1] : "";
   // Save the content into the database
   const { data, error } = await supabaseClient
     .from("content")
     .insert([
-      { link: url, title: title, raw_content: html, user_id: userId },
-    ]);
+      {
+        link: url,
+        title: title,
+        raw_content: html,
+        shareable: true,
+        user_id: userId,
+      },
+    ])
+    .select();
+  console.log("data: ", data);
+  console.log("error: ", error);
 
   if (error) {
     console.error("Error inserting data:", error);
-    return;
+    throw error;
   } else {
     console.log("Data inserted:", data);
+    return { data };
   }
 }
 
@@ -51,31 +101,29 @@ async function generateEmbeddings(contentId: number) {
   }
 
   // Generate the embedding
-  const embedding = await model.embedQuery(contentData.raw_content);
+  const embeddingVector = await model.embedQuery(contentData.raw_content);
 
   // Check if an embedding already exists for this content
-  const { data: documentData, error: documentError } = await supabaseClient
+  // TODO: we might not need this check if we're comfortable overriding the embeddings
+  const { data: documentData } = await supabaseClient
     .from("document")
     .select("*")
     .eq("content", contentId)
     .single();
 
-  if (documentError) {
-    console.error("Error fetching document:", documentError);
-    return { error: documentError };
-  }
-
   if (documentData) {
     console.log("Embedding already exists for this content:", contentId);
     return { error: "Embedding already exists for this content" };
   }
+  const embeddingString = JSON.stringify(embeddingVector);
+  console.log("Embedding:", embeddingString);
 
   // Save the embedding into the database
   const { data: newDocumentData, error: newDocumentError } =
     await supabaseClient
       .from("document")
       .insert([
-        { content: contentId, embedding: embedding },
+        { content: contentId, embedding: embeddingString },
       ]);
 
   if (newDocumentError) {
@@ -86,33 +134,3 @@ async function generateEmbeddings(contentId: number) {
     return { data: newDocumentData };
   }
 }
-
-// async function generateEmbeddings() {
-//   console.log("Generating embeddings");
-//   const supabaseClient = _supabaseClientInternals.createClient();
-//   const model = _llmInternals.getChatOpenAI();
-
-// const configuration = new Configuration({ apiKey: '<YOUR_OPENAI_KEY>' })
-// const openAi = new OpenAIApi(configuration)
-
-// const documents = await getDocuments() // Your custom function to load docs
-
-// // Assuming each document is a string
-// for (const document of documents) {
-//   // OpenAI recommends replacing newlines with spaces for best results
-//   const input = document.replace(/\n/g, ' ')
-
-//   const embeddingResponse = await openai.createEmbedding({
-//     model: 'text-embedding-ada-002',
-//     input,
-//   })
-
-//   const [{ embedding }] = embeddingResponse.data.data
-
-//   // In production we should handle possible errors
-//   await supabaseClient.from('documents').insert({
-//     content: document,
-//     embedding,
-//   })
-// }
-// }
