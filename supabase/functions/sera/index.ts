@@ -1,7 +1,45 @@
 import { serve } from "http/server.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { Sera } from "./sera.ts";
-import { PlanArtifacts } from "./privilegedRequestHandler.ts";
+import { PlanArtifacts, SeraResponse } from "./privilegedRequestHandler.ts";
+
+function streamPlanWithoutIdeas(
+  seraResponse: SeraResponse,
+  controller: ReadableStreamDefaultController,
+  encoder: TextEncoder
+) {
+  const enqueueableDescription = "basePlanArtifacts.seraResponse";
+  streamPlan(enqueueableDescription, seraResponse, controller, encoder);
+}
+
+function streamPlanWithIdeas(
+  seraResponse: SeraResponse,
+  controller: ReadableStreamDefaultController,
+  encoder: TextEncoder
+) {
+  const enqueueableDescription = "planWithIdeasArtifacts.seraResponse";
+  streamPlan(enqueueableDescription, seraResponse, controller, encoder);
+}
+
+function streamPlan(
+  enqueueableDescription: string,
+  seraResponse: SeraResponse,
+  controller: ReadableStreamDefaultController,
+  encoder: TextEncoder
+) {
+  const text = JSON.stringify(seraResponse);
+
+  // Convert text to Uint8Array
+  const data = encoder.encode(text);
+
+  // Push data into the stream
+  console.log(
+    `Enqueuing ${enqueueableDescription}:`,
+    JSON.stringify(seraResponse, null, 2)
+  );
+  controller.enqueue(data);
+  /* End streaming base plan without ideas */
+}
 
 serve(async (request: Request) => {
   try {
@@ -21,37 +59,22 @@ serve(async (request: Request) => {
         const basePlanArtifacts: PlanArtifacts = await sera.handleRequest(
           seraRequest
         );
-        const seraResponseText = JSON.stringify(basePlanArtifacts.seraResponse);
 
-        // Convert seraResponseText to Uint8Array
-        const seraResponseTextData = encoder.encode(seraResponseText);
-
-        // Push seraResponseTextData into the stream
-        console.log(
-          "Enqueuing basePlanArtifacts.seraResponse:",
-          JSON.stringify(basePlanArtifacts.seraResponse, null, 2)
+        streamPlanWithoutIdeas(
+          basePlanArtifacts.seraResponse,
+          controller,
+          encoder
         );
-        controller.enqueue(seraResponseTextData);
-        /* End streaming base plan without ideas */
 
         /* Stream plan with ideas */
         const planWithIdeasArtifacts: PlanArtifacts =
           await sera.handleAddingIdeasToPlan(basePlanArtifacts);
-        const seraResponseTextWithIdeas = JSON.stringify(
-          planWithIdeasArtifacts.seraResponse
-        );
-        // Convert seraResponseTextWithIdeas to Uint8Array
-        const seraResponseTextWithIdeasData = encoder.encode(
-          seraResponseTextWithIdeas
-        );
 
-        // Push seraResponseTextWithIdeasData into the stream
-        console.log(
-          "Enqueuing planWithIdeasArtifacts.seraResponse:",
-          JSON.stringify(planWithIdeasArtifacts.seraResponse, null, 2)
+        streamPlanWithIdeas(
+          planWithIdeasArtifacts.seraResponse,
+          controller,
+          encoder
         );
-        controller.enqueue(seraResponseTextWithIdeasData);
-        /* End streaming base plan without ideas */
 
         controller.close();
       },
