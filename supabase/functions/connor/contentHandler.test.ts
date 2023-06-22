@@ -12,13 +12,25 @@ import {
 import { _internals as _llmInternals } from "../_shared/llm.ts";
 import { _internals as _contentInternals } from "./contentHandler.ts";
 import { SupabaseClient } from "@supabase/supabase-js";
-import * as sinon from "sinon";
+import * as sinonImport from "sinon";
 import { ConnorRequest } from "./connor.ts";
 
-Deno.test("scrapeAndSaveLink function", async (t) => {
-  const supabaseClientStub = sinon.createStubInstance(SupabaseClient);
+const sinon = sinonImport.createSandbox();
 
+Deno.test("scrapeAndSaveLink function", async (t) => {
+  const html = "<title>Test Title</title>";
   await t.step("scrapes and saves content with link input", async () => {
+    const textStub = stub(
+      Response.prototype,
+      "text",
+      returnsNext([Promise.resolve(html)]),
+    );
+    const fetchStub = stub(
+      window,
+      "fetch",
+      returnsNext([Promise.resolve(new Response(html))]),
+    );
+    const supabaseClientStub = sinon.createStubInstance(SupabaseClient);
     const url = "https://example.com";
     const userId = "testUserId";
     const contentId = 1;
@@ -26,18 +38,7 @@ Deno.test("scrapeAndSaveLink function", async (t) => {
       url: url,
       userId: userId,
     };
-    const html = "<title>Test Title</title>";
     const title = "Test Title";
-    const fetchStub = stub(
-      window,
-      "fetch",
-      returnsNext([Promise.resolve(new Response(html))]),
-    );
-    const textStub = stub(
-      Response.prototype,
-      "text",
-      returnsNext([Promise.resolve(html)]),
-    );
     const selectStub = sinon.stub().returns(
       Promise.resolve({ data: [{ id: contentId }] }),
     );
@@ -67,11 +68,63 @@ Deno.test("scrapeAndSaveLink function", async (t) => {
       },
     ]);
     assertEquals(response, { data: [{ id: contentId } as ContentRow] });
+    assertEquals(fetchStub.calls.length, 1);
+    sinon.restore();
+    fetchStub.restore();
+    textStub.restore();
+  });
+
+  await t.step("saves content with specified input", async () => {
+    const fetchStub = stub(
+      window,
+      "fetch",
+      returnsNext([Promise.resolve(new Response(html))]),
+    );
+    const supabaseClientStub = sinon.createStubInstance(SupabaseClient);
+    const url = "https://example.com";
+    const userId = "testUserId";
+    const contentId = 1;
+    const rawContent = "Test Content";
+    const title = "Test Title";
+    const requestMock: ConnorRequest = {
+      url: url,
+      userId: userId,
+      rawContent: rawContent,
+      shareable: false,
+      title: title,
+    };
+    const selectStub = sinon.stub().returns(
+      Promise.resolve({ data: [{ id: contentId }] }),
+    );
+    const insertStub = sinon.stub().returns({ select: selectStub });
+    supabaseClientStub.from.returns({ insert: insertStub });
+
+    const response = await _contentInternals.scrapeAndSaveLink(
+      supabaseClientStub,
+      requestMock,
+    );
+
+    sinon.assert.calledOnce(supabaseClientStub.from);
+    sinon.assert.calledWith(supabaseClientStub.from, "content");
+    sinon.assert.calledOnce(selectStub);
+    sinon.assert.calledOnce(insertStub);
+    sinon.assert.calledWith(insertStub, [
+      {
+        link: url,
+        title: title,
+        raw_content: rawContent,
+        shareable: false,
+        user_id: userId,
+      },
+    ]);
+    // TODO: fetchStub was really janky to get to work, figure out a better way
+    assertEquals(fetchStub.calls.length, 0);
+    assertEquals(response, { data: [{ id: contentId } as ContentRow] });
     sinon.restore();
   });
 });
 
-Deno.test("generateEmbeddings", async () => {
+Deno.test("generateEmbeddings function", async () => {
   const contentId = 1;
   const raw_content = "Test Content";
   const embeddingVector = [1, 2, 3];
