@@ -22,4 +22,5 @@ export function getEmbeddingsOpenAI(): OpenAIEmbeddings {
 export const _internals = {
   getChatOpenAI,
   getEmbeddingsOpenAI,
+  OpenAIEmbeddings,
 };

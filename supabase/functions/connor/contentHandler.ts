@@ -1,52 +1,40 @@
-import { _internals as _supabaseClientInternals } from "../_shared/supabase-client.ts";
-import { _internals as _llmInternals } from "../_shared/llm.ts";
-import { corsHeaders } from "../_shared/cors.ts";
-import { serve } from "http/server.ts";
+import { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
+import { Database } from "../../types/supabase.ts";
+import { OpenAIEmbeddings } from "langchain/embeddings/openai";
+import { ConnorRequest } from "./connor.ts";
 
-serve(async (request: Request) => {
+export type ContentRow = Database["public"]["Tables"]["content"]["Row"];
+
+export interface InsertResponse {
+  error?: PostgrestError | string;
+  data?: null;
+}
+
+async function handleRequest(
+  model: OpenAIEmbeddings,
+  supabaseClient: SupabaseClient<Database>,
+  contentRequest: ConnorRequest,
+): Promise<InsertResponse> {
   try {
-    if (request.method === "OPTIONS") {
-      console.log("Handling CORS preflight request");
-      return new Response("ok", { headers: corsHeaders });
-    }
-
-    const contentRequest = await request.json();
-    const responseFromContent = await handler(
-      contentRequest.url,
-      contentRequest.userId,
-    );
-
-    return new Response(JSON.stringify(responseFromContent), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  } catch (error) {
-    console.error(error);
-
-    return new Response(JSON.stringify({ error: error.message }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 400,
-    });
-  }
-});
-
-async function handler(url: string, userId: string) {
-  try {
-    const { data } = await scrapeAndSaveLink(url, userId);
+    const { data } = await scrapeAndSaveLink(supabaseClient, contentRequest);
     console.log("Content saved: ", data);
 
     // Generate an embedding for the saved content
-    await generateEmbeddings(data[0]?.id);
+    const response = generateEmbeddings(supabaseClient, model, data[0]?.id);
     console.log("Embedding generated");
+    return response;
   } catch (error) {
     console.error("Error saving content:", error);
     throw error;
   }
 }
 
-async function scrapeAndSaveLink(url: string, userId: string) {
-  const supabaseClient = _supabaseClientInternals.createClient();
-
+async function scrapeAndSaveLink(
+  supabaseClient: SupabaseClient<Database>,
+  contentRequest: ConnorRequest,
+): Promise<Record<"data", ContentRow[]>> {
   // Fetch the webpage
+  const { url, userId } = contentRequest;
   const res = await fetch(url);
   const html = await res.text();
 
@@ -78,12 +66,15 @@ async function scrapeAndSaveLink(url: string, userId: string) {
   }
 }
 
-async function generateEmbeddings(contentId: number) {
+async function generateEmbeddings(
+  supabaseClient: SupabaseClient<Database>,
+  model: OpenAIEmbeddings,
+  contentId: number,
+): Promise<InsertResponse> {
   console.log("Generating embeddings");
-  const supabaseClient = _supabaseClientInternals.createClient();
-  const model = _llmInternals.getEmbeddingsOpenAI();
 
   // Fetch the specific content from the database
+  console.log("contentId??: ", contentId);
   const { data: contentData, error: contentError } = await supabaseClient
     .from("content")
     .select("raw_content")
@@ -134,3 +125,10 @@ async function generateEmbeddings(contentId: number) {
     return { data: newDocumentData };
   }
 }
+
+// _internals are used for testing
+export const _internals = {
+  handleRequest,
+  scrapeAndSaveLink,
+  generateEmbeddings,
+};
