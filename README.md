@@ -47,7 +47,7 @@ $ npm test # deno test --import-map=./supabase/functions/import_map.json
 ```
 
 ## Invoking Connor from the CLI
-To invoke Connor and insert content and embeddings, first update the `./scripts/contentData.ts` file with the content you want to insert. Then, use the following command:
+To invoke Connor and insert content and embeddings, first update the `./scripts/contentData.ts` file with the content you want to insert. Next, ensure you have `ts-node` globally installed (`npm install -g ts-node`), and then run the following command:
 
 ```shell
 ts-node ./scripts/upload_content.ts <user_id> <token>
