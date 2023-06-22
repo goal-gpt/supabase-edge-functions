@@ -39,18 +39,22 @@ jobs:
         with:
           version: latest
 
-      - name: 'Create Supabase env file'
+      - name: "Create Supabase env file"
         run: |
           echo "${{ secrets.SUPABASE_ENV_FILE }}" > .env
-      
-      - name: 'Create link to Supabase project'
+
+      - name: "Create link to Supabase project"
         run: |
           supabase link --project-ref $SUPABASE_PROJECT_ID --password ""
-      
-      - name: 'Set Supabase .env file'
+
+      - name: "Set Supabase .env file"
         run: |
           supabase secrets set --env-file .env
-      
-      - name: 'Deploy Sera on Supabase'
+
+      - name: "Deploy Sera on Supabase"
         run: |
           supabase functions deploy sera --project-ref $SUPABASE_PROJECT_ID
+
+      - name: "Deploy Connor on Supabase"
+        run: |
+          supabase functions deploy connor --project-ref $SUPABASE_PROJECT_ID
