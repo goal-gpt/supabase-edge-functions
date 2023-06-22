@@ -1,4 +1,3 @@
-const fs = require("fs"); // eslint-disable-line
 const dotenv = require("dotenv"); // eslint-disable-line
 dotenv.config();
 
@@ -11,8 +10,14 @@ interface CardItemData {
   categories: string[];
   length: number;
   points: number;
-  questionItems: any[];
+  questionItems: Question[];
   testedContent: string;
+}
+
+interface Question {
+  question: string;
+  correctAnswer: string;
+  incorrectAnswers?: string[];
 }
 
 interface ConnorRequest {
@@ -34,7 +39,7 @@ async function sendRequests(
   // TODO: fix this as it doesn't seem to load from env
   const url = (process.env.SUPABASE_FUNCTIONS_URL ?? "") + "/connor";
 
-  for (let request of requests) {
+  for (const request of requests) {
     const response = await fetch(
       url,
       {
