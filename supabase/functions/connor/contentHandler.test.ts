@@ -5,12 +5,12 @@ import {
   returnsNext,
   stub,
 } from "testing/mock.ts";
-import { _internals as _supabaseClientInternals } from "../_shared/supabase-client.ts";
-import { _internals as _llmInternals } from "../_shared/llm.ts";
 import {
-  _internals as _contentInternals,
+  _internals as _supabaseClientInternals,
   ContentRow,
-} from "./contentHandler.ts";
+} from "../_shared/supabase-client.ts";
+import { _internals as _llmInternals } from "../_shared/llm.ts";
+import { _internals as _contentInternals } from "./contentHandler.ts";
 import { SupabaseClient } from "@supabase/supabase-js";
 import * as sinon from "sinon";
 import { ConnorRequest } from "./connor.ts";

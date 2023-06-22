@@ -1,13 +1,16 @@
-import { _internals as _supabaseClientInternals } from "../_shared/supabase-client.ts";
-import { _internals as _llmInternals } from "../_shared/llm.ts";
 import {
-  _internals as _contentHandlerInternals,
+  _internals as _supabaseClientInternals,
   InsertResponse,
-} from "./contentHandler.ts";
+} from "../_shared/supabase-client.ts";
+import { _internals as _llmInternals } from "../_shared/llm.ts";
+import { _internals as _contentHandlerInternals } from "./contentHandler.ts";
 
 export interface ConnorRequest {
   url: string;
   userId: string;
+  rawContent?: string;
+  shareable?: boolean;
+  title?: string;
 }
 
 export class Connor {
