@@ -3,7 +3,7 @@ import {
   SeraResponse,
 } from "./privilegedRequestHandler.ts";
 import { _internals as _supabaseClientInternals } from "../_shared/supabase-client.ts";
-import { _internals as _llmInternals } from "./llm.ts";
+import { _internals as _llmInternals } from "../_shared/llm.ts";
 
 export interface SeraRequest {
   message: string;
