@@ -46,6 +46,13 @@ To run tests:
 $ npm test # deno test --import-map=./supabase/functions/import_map.json
 ```
 
+## Invoking Connor from the CLI
+To invoke Connor and insert content and embeddings, first update the `./scripts/contentData.ts` file with the content you want to insert. Then, use the following command:
+
+```shell
+ts-node ./scripts/upload_content.ts <user_id> <token>
+```
+
 ## Continuous Deployment
 
 The [functions.yml](/.github/workflows/functions.yml) defines a job, "lint-and-test" that will lint and and run the code's tests when pull requests and pushes to `main` are made.
