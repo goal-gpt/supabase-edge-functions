@@ -8,7 +8,7 @@ import {
 import {
   _internals as _supabaseClientInternals,
   ContentRow,
-} from "../_shared/supabase-client.ts";
+} from "../_shared/supabaseClient.ts";
 import { _internals as _llmInternals } from "../_shared/llm.ts";
 import { _internals as _contentInternals } from "./contentHandler.ts";
 import { SupabaseClient } from "@supabase/supabase-js";

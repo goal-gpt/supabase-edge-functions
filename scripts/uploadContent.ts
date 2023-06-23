@@ -72,7 +72,7 @@ async function processJsonFileAndSendRequests(
 
 // Check that we have the right number of command line arguments.
 if (process.argv.length < 4) {
-  console.error("Usage: node script.js <userId> <token>");
+  console.error("Usage: node ./scripts/upload_content.ts <userId> <token>");
   process.exit(1);
 }
 

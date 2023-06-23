@@ -1,7 +1,7 @@
 import {
   _internals as _supabaseClientInternals,
   InsertResponse,
-} from "../_shared/supabase-client.ts";
+} from "../_shared/supabaseClient.ts";
 import { _internals as _llmInternals } from "../_shared/llm.ts";
 import { _internals as _contentHandlerInternals } from "./contentHandler.ts";
 

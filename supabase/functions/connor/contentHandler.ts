@@ -10,7 +10,7 @@ import {
   InsertResponse,
   saveContentToDatabase,
   saveEmbeddingToDatabase,
-} from "../_shared/supabase-client.ts";
+} from "../_shared/supabaseClient.ts";
 
 async function handleRequest(
   model: OpenAIEmbeddings,
