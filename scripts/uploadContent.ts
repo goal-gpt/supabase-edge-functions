@@ -52,6 +52,7 @@ async function sendRequests(
     if (!response.ok) {
       console.error(`Error sending request: ${response.statusText}`);
     }
+    console.log(`Successfully added content: ${request.url}`);
   }
 }
 
