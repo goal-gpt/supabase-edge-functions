@@ -16,6 +16,12 @@
     "incremental": true,
     "paths": {
       "@/*": ["./src/*"]
+    },
+  },
+  "ts-node": {
+    "esm": true,
+    "compilerOptions": {
+      "module": "nodenext",
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx"],
