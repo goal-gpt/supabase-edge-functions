@@ -5,7 +5,7 @@ import {
 } from "./privilegedRequestHandler.ts";
 import { assert } from "testing/asserts.ts";
 import { assertSpyCalls, returnsNext, stub } from "testing/mock.ts";
-import { _internals as _supabaseClientInternals } from "../_shared/supabase-client.ts";
+import { _internals as _supabaseClientInternals } from "../_shared/supabaseClient.ts";
 import { _internals as _llmInternals } from "../_shared/llm.ts";
 
 Deno.test("sera", async (t) => {

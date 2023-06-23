@@ -1,4 +1,4 @@
-import { _internals as _supabaseClientInternals } from "../_shared/supabase-client.ts";
+import { _internals as _supabaseClientInternals } from "../_shared/supabaseClient.ts";
 import { _internals as _llmInternals } from "../_shared/llm.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { serve } from "http/server.ts";

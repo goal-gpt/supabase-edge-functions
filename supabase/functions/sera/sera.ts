@@ -2,7 +2,7 @@ import {
   _internals as _privilegedRequestHandlerInternals,
   SeraResponse,
 } from "./privilegedRequestHandler.ts";
-import { _internals as _supabaseClientInternals } from "../_shared/supabase-client.ts";
+import { _internals as _supabaseClientInternals } from "../_shared/supabaseClient.ts";
 import { _internals as _llmInternals } from "../_shared/llm.ts";
 
 export interface SeraRequest {
@@ -20,7 +20,7 @@ export class Sera {
     return await _privilegedRequestHandlerInternals.handleRequest(
       model,
       supabaseClient,
-      seraRequest
+      seraRequest,
     );
   }
 }

@@ -3,7 +3,7 @@ import {
   _internals as _privilegedRequestHandlerInternals,
   premise,
 } from "./privilegedRequestHandler.ts";
-import { _internals as _supabaseClientInternals } from "../_shared/supabase-client.ts";
+import { _internals as _supabaseClientInternals } from "../_shared/supabaseClient.ts";
 import { _internals as _llmInternals } from "../_shared/llm.ts";
 import { SeraRequest } from "./sera.ts";
 import { SupabaseClient } from "@supabase/supabase-js";
