@@ -82,13 +82,18 @@ export async function fetchDocumentData(
 export async function saveEmbeddingToDatabase(
   supabaseClient: SupabaseClient<Database>,
   contentId: number,
+  rawContent: string,
   embeddingString: string,
 ): Promise<InsertResponse> {
   const { data: newDocumentData, error: newDocumentError } =
     await supabaseClient
       .from("document")
       .insert([
-        { content: contentId, embedding: embeddingString },
+        {
+          content: contentId,
+          embedding: embeddingString,
+          raw_content: rawContent,
+        },
       ]);
 
   if (newDocumentError) {

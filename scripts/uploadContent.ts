@@ -62,7 +62,7 @@ async function processJsonFileAndSendRequests(
   const requests: ConnorRequest[] = cardItemData.map((item: CardItemData) => ({
     url: item.link,
     userId: userId,
-    rawContent: item.text,
+    rawContent: item.testedContent,
     title: item.title,
     shareable: true,
   }));

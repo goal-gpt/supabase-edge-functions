@@ -1,4 +1,4 @@
-// Putting in 1 sample content item to demonstrate how to use this
+// Putting in 1 sample content item to demonstrate how to use this. Right now, it has to be copied over to `uploadContent.ts` to be used
 const cardItemData: CardItemData[] = [
   {
     link: "https://www.bogleheads.org/wiki/Household_budgeting",

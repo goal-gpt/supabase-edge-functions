@@ -168,7 +168,11 @@ Deno.test("generateEmbeddings function", async () => {
   sinon.assert.calledWith(equalStub.secondCall, "content", contentId);
   sinon.assert.calledOnce(insertStub);
   sinon.assert.calledWith(insertStub, [
-    { content: contentId, embedding: embeddingString },
+    {
+      content: contentId,
+      embedding: embeddingString,
+      raw_content: raw_content,
+    },
   ]);
   assertEquals(response, { data: null });
 

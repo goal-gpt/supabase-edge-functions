@@ -81,7 +81,8 @@ async function generateEmbeddings(
     throw `No content found with the given ID: ${contentId}`;
   }
 
-  const embeddingVector = await model.embedQuery(contentData.raw_content);
+  const rawContent = contentData.raw_content;
+  const embeddingVector = await model.embedQuery(rawContent);
 
   const documentData = await fetchDocumentData(supabaseClient, contentId);
   if (documentData) {
@@ -95,6 +96,7 @@ async function generateEmbeddings(
   return await saveEmbeddingToDatabase(
     supabaseClient,
     contentId,
+    rawContent,
     embeddingString,
   );
 }
