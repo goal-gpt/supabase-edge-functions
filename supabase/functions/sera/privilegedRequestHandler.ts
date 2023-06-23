@@ -1,4 +1,3 @@
-import { ChatOpenAI } from "langchain/chat_models/openai";
 import {
   AIChatMessage,
   BaseChatMessage,
@@ -10,6 +9,10 @@ import { Database } from "../../types/supabase.ts";
 import { SeraRequest } from "./sera.ts";
 import { z, ZodTypeAny } from "zod";
 import { PromptTemplate } from "langchain/prompts";
+import { getEmbeddingString, ModelsContext } from "../_shared/llm.ts";
+import { MatchDocumentsResponse } from "../_shared/supabaseClient.ts";
+import { OpenAIEmbeddings } from "https://esm.sh/v126/langchain@0.0.85/embeddings/openai.js";
+import { getSimilarDocuments } from "../_shared/supabaseClient.ts";
 
 async function getAllChatLines(
   supabaseClient: SupabaseClient<Database>,
@@ -93,6 +96,7 @@ export const premise =
   `You are an empathetic, emotionally-aware, and imaginative AI personal finance guid. ` +
   `You are very creative and open-minded when it comes to finding financial aspects to requests. ` +
   `Given messages between you and the user, delimited by """, try to respond with a thorough and imaginative plan that consists of small steps. ` +
+  `Make use of context_documents, delimited by ###, to add links into the answer you provide. The format of each document is delimited as | [title](url) - content |. Use the content to write the answer and refer to it in the message using the [title](url) format. ` +
   `If you have already made a plan, use information in the messages to update the plan, including the numbering of the steps, if sensible. ` +
   `If you cannot find any financial aspects to a request, ` +
   `try to respond with a plan to reduce the costs or increase the earnings from buying, selling, visiting, using, or achieving the subject of the request. ` +
@@ -197,9 +201,13 @@ function cleanResponse(response: string): string {
 function convertToSeraResponse(response: string, chat: number): SeraResponse {
   let responseJson;
 
+  console.log(response);
+  console.log("response type:", typeof response);
   try {
     responseJson = JSON.parse(response);
   } catch (_e) {
+    console.error("Error parsing response as JSON:", response);
+    console.log("Error: ", _e);
     responseJson = {
       text: response,
     };
@@ -215,8 +223,30 @@ function convertToSeraResponse(response: string, chat: number): SeraResponse {
   return seraResponse;
 }
 
+async function embedAndGetSimilarDocuments(
+  model: OpenAIEmbeddings,
+  supabaseClient: SupabaseClient<Database>,
+  messages: BaseChatMessage[],
+): Promise<MatchDocumentsResponse> {
+  const lastMessages = messages.slice(-2).join(" ");
+  const embeddingString = await getEmbeddingString(model, lastMessages);
+  const documents = await getSimilarDocuments(
+    supabaseClient,
+    embeddingString,
+    0.78,
+    10,
+  );
+  return documents;
+}
+
+function formatDocuments(documents: MatchDocumentsResponse): string {
+  return documents
+    .map((d) => `| [${d.title}](${d.link}) - ${d.raw_content} |`)
+    .join("\n");
+}
+
 export async function handleRequest(
-  model: ChatOpenAI,
+  modelsContext: ModelsContext,
   supabaseClient: SupabaseClient<Database>,
   request: SeraRequest,
 ): Promise<SeraResponse> {
@@ -233,18 +263,33 @@ export async function handleRequest(
 
   const humanChatMessage = new HumanChatMessage(message);
 
+  // TODO: implement tokeniser to manage message length
   messages.push(humanChatMessage);
   await _internals.createChatLine(supabaseClient, humanChatMessage, chat);
 
+  const rawDocuments = await embedAndGetSimilarDocuments(
+    modelsContext.embed,
+    supabaseClient,
+    messages,
+  );
+  const contextDocuments = formatDocuments(rawDocuments);
+
   const prompt = new PromptTemplate({
-    template: '{premise}\n{format_instructions}\n"""{messages}"""',
-    inputVariables: ["premise", "format_instructions", "messages"],
+    template:
+      '{premise}\n###{context_documents}###\n{format_instructions}\n"""{messages}"""',
+    inputVariables: [
+      "premise",
+      "format_instructions",
+      "context_documents",
+      "messages",
+    ],
   });
 
   const mappedMessages = messages.map((m) => m._getType() + ": " + m.text);
   const input = await prompt.format({
     premise: premise,
     format_instructions: formatInstructions,
+    context_documents: contextDocuments,
     messages: mappedMessages.join("\n"),
   });
   const planRequestMessage = new SystemChatMessage(input);
@@ -252,7 +297,7 @@ export async function handleRequest(
   console.log("Calling OpenAI to get plan", planRequestMessage);
 
   // Calls OpenAI
-  const response = await model.call([planRequestMessage]);
+  const response = await modelsContext.chat.call([planRequestMessage]);
   const aiChatMessage = new AIChatMessage(response.text);
   const aiStrippedResponse = stripAIPrefixFromResponse(response.text);
   const preambleStrippedResponse = stripPreambleFromResponse(

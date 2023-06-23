@@ -4,12 +4,17 @@ import {
   premise,
 } from "./privilegedRequestHandler.ts";
 import { _internals as _supabaseClientInternals } from "../_shared/supabaseClient.ts";
-import { _internals as _llmInternals } from "../_shared/llm.ts";
+import { _internals as _llmInternals, ModelsContext } from "../_shared/llm.ts";
 import { SeraRequest } from "./sera.ts";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { ChatOpenAI } from "langchain/chat_models/openai";
+import { OpenAIEmbeddings } from "langchain/embeddings/openai";
 import * as sinon from "sinon";
-import { assertEquals, assertStrictEquals } from "testing/asserts.ts";
+import {
+  assertEquals,
+  assertStrictEquals,
+  assertStringIncludes,
+} from "testing/asserts.ts";
 import {
   AIChatMessage,
   BaseChatMessage,
@@ -18,7 +23,6 @@ import {
 
 // TODO: Determine how to make tests DRY-er
 Deno.test("handleRequest", async (t) => {
-  const supabaseClientStub = sinon.createStubInstance(SupabaseClient);
   const chat = 1;
   const modelResponsePreamble =
     "I suggest starting by creating a budget to determine how much money you can allocate towards job searching. " +
@@ -46,11 +50,41 @@ Deno.test("handleRequest", async (t) => {
     '\n                "action": "Prepare for interviews by researching the company and practicing common ' +
     'interview questions."\n            }\n        ]\n    }\n}';
   const modelResponseJson = JSON.parse(modelResponseJsonString);
-  const modelStubWithCall = sinon.createStubInstance(ChatOpenAI, {
-    call: new AIChatMessage(
+  const rawContent = "Test content";
+  const title = "Test Title";
+  const link = "https://example.com";
+  const rpcStub = sinon.stub().resolves({
+    data: [{
+      id: 1,
+      raw_content: rawContent,
+      title: title,
+      link: link,
+    }],
+  });
+  const embedding = "embedding";
+  const supabaseClientStub = sinon.createStubInstance(SupabaseClient, {
+    rpc: rpcStub,
+  });
+  const AIChatMessageStub = sinon.stub().returns(
+    new AIChatMessage(
       `${modelResponsePreamble}${modelResponseJsonString}`,
     ),
+  );
+  const chatModelStubWithCall = sinon.createStubInstance(ChatOpenAI, {
+    call: AIChatMessageStub,
   });
+  const embedModelStubWithCall = sinon.createStubInstance(
+    OpenAIEmbeddings,
+    {
+      embedQuery: new Promise((resolve) => {
+        resolve(embedding);
+      }),
+    },
+  );
+  const modelsContextStub: ModelsContext = {
+    chat: chatModelStubWithCall,
+    embed: embedModelStubWithCall,
+  };
 
   await t.step("without a chat", async (t) => {
     await t.step("creates chat", async () => {
@@ -72,7 +106,7 @@ Deno.test("handleRequest", async (t) => {
       );
 
       const response = await _privilegedRequestHandlerInternals.handleRequest(
-        modelStubWithCall,
+        modelsContextStub,
         supabaseClientStub,
         seraRequest,
       );
@@ -86,6 +120,22 @@ Deno.test("handleRequest", async (t) => {
       );
       assertStrictEquals(response.question, modelResponseJson.question);
       assertEquals(response.chat, chat);
+
+      sinon.assert.calledOnce(AIChatMessageStub);
+      assertStringIncludes(
+        AIChatMessageStub.getCall(0).args[0][0]["text"],
+        `[${title}](${link}) - ${rawContent}`,
+      );
+      sinon.assert.calledOnce(supabaseClientStub.rpc);
+      sinon.assert.calledWith(
+        supabaseClientStub.rpc,
+        "match_documents",
+        {
+          query_embedding: JSON.stringify(embedding),
+          match_threshold: 0.78,
+          match_count: 10,
+        },
+      );
 
       createChatStub.restore();
       createChatLineStub.restore();
@@ -112,7 +162,7 @@ Deno.test("handleRequest", async (t) => {
     };
 
     await _privilegedRequestHandlerInternals.handleRequest(
-      modelStubWithCall,
+      modelsContextStub,
       supabaseClientStub,
       seraRequest,
     );

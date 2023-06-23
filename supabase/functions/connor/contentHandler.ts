@@ -11,6 +11,7 @@ import {
   saveContentToDatabase,
   saveEmbeddingToDatabase,
 } from "../_shared/supabaseClient.ts";
+import { getEmbeddingString } from "../_shared/llm.ts";
 
 async function handleRequest(
   model: OpenAIEmbeddings,
@@ -81,16 +82,15 @@ async function generateEmbeddings(
     throw `No content found with the given ID: ${contentId}`;
   }
 
-  const rawContent = contentData.raw_content;
-  const embeddingVector = await model.embedQuery(rawContent);
-
   const documentData = await fetchDocumentData(supabaseClient, contentId);
   if (documentData) {
     console.log("Embedding already exists for this content:", contentId);
     throw "Embedding already exists for this content";
   }
 
-  const embeddingString = JSON.stringify(embeddingVector);
+  // OpenAI recommends replacing newlines with spaces for best results
+  const { raw_content: rawContent } = contentData;
+  const embeddingString = await getEmbeddingString(model, rawContent);
   console.log("Embedding:", embeddingString);
 
   return await saveEmbeddingToDatabase(
