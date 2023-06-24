@@ -11,23 +11,30 @@ serve(async (request: Request) => {
 
     const sera = new Sera();
     const seraRequest = await request.json();
-    const responseFromSera = await sera.handleRequest(seraRequest);
 
     const body = new ReadableStream({
-      start(controller) {
-        const text = JSON.stringify(responseFromSera);
+      async start(controller) {
         const encoder = new TextEncoder();
+        const seraResponse = await sera
+          .handleRequest(
+            seraRequest,
+          );
+        const text = JSON.stringify(seraResponse);
 
-        // Convert the JSON string to Uint8Array
+        // Convert text to Uint8Array
         const data = encoder.encode(text);
 
-        // Push the data into the stream
+        // Push data into the stream
+        console.log(
+          `Enqueuing seraResponse:`,
+          JSON.stringify(seraResponse, null, 2),
+        );
         controller.enqueue(data);
+
         controller.close();
       },
     });
 
-    console.log("Responding with:", responseFromSera);
     return new Response(body, {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

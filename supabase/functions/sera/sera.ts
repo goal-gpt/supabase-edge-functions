@@ -14,13 +14,16 @@ export class Sera {
   // TODO: determine if this name is good
   async handleRequest(seraRequest: SeraRequest): Promise<SeraResponse> {
     console.log("Handling request:", seraRequest);
-    const supabaseClient = _supabaseClientInternals.createClient();
     const model = _llmInternals.getChatOpenAI();
+    const supabaseClient = _supabaseClientInternals.createClient();
 
-    return await _privilegedRequestHandlerInternals.handleRequest(
-      model,
-      supabaseClient,
-      seraRequest,
-    );
+    const seraResponse = await _privilegedRequestHandlerInternals
+      .handleRequest(
+        model,
+        supabaseClient,
+        seraRequest,
+      );
+
+    return seraResponse;
   }
 }
