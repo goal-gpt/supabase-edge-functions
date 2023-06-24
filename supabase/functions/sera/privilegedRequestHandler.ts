@@ -70,7 +70,7 @@ async function createChatLine(
 async function updateChatLineMessage(
   supabaseClient: SupabaseClient<Database>,
   chatLine: number,
-  messageText: string
+  messageText: string,
 ) {
   console.log("Updating chat line", chatLine, messageText);
 
@@ -97,20 +97,33 @@ async function createChat(
   return chat;
 }
 
+export interface Action {
+  name: string;
+  description: string;
+  ideas?: {
+    mostObvious?: string;
+    leastObvious?: string;
+    inventiveOrImaginative?: string;
+    rewardingOrSustainable?: string;
+  };
+}
+
 export interface Step {
   number: number;
-  action: string; // TODO: convert to {name: string, description: string}? Although it doesn't appear used beyond this file
+  action: Action; // TODO: convert to {name: string, description: string}? Although it doesn't appear used beyond this file
 }
 
 export interface Plan {
   goal: string;
   steps: Step[];
 }
-
-export interface SeraResponse {
+export interface BaseSeraResponse {
   text: string;
-  chat: number;
   plan?: Plan;
+}
+
+export interface SeraResponse extends BaseSeraResponse {
+  chat: number;
 }
 
 export interface PlanArtifacts {
@@ -122,13 +135,17 @@ export interface PlanArtifacts {
 export const premise =
   `You are an empathetic, emotionally-aware, and imaginative AI personal finance guide. ` +
   `You are very creative and open-minded when it comes to finding financial aspects to requests. ` +
-  `You have determined the persona of the user, delimited by +++ below. ` +
-  `Your task is to make a plan for the user given the user persona, taking into account the messages between you and the user, delimited by """. ` +
+  // `You have determined the persona of the user, delimited by +++ below. ` +
+  `Your task is to make a plan for the user that helps them resolve their financial concerns or achieve their financial goals, ` +
+  `based on the messages between you and the user, delimited by """. ` +
+  `If you cannot determine the user's financial concerns or goals based on the messages, ` +
+  `respond with a plan to reduce the costs or increase the earnings from buying, selling, visiting, using, or achieving the subject of the user's messages. ` +
+  `Unless you know otherwise, assume the user is also concerned ` +
+  `with inflation, has very little savings, has very little experience budgeting, is open to ` +
+  `new or additional jobs, and is open to online learning.` +
   `The plan should be thorough, imaginative, and consist of small steps. ` +
   `The plan should not include steps the user has already taken. ` +
   `If you have already made a plan, use information in the messages to update the plan, including the numbering of the steps, if sensible. ` +
-  // `If you cannot find any financial aspects in the messages, ` +
-  // `respond with a plan to reduce the costs or increase the earnings from buying, selling, visiting, using, or achieving the subject of the request. ` +
   `If you do not know the answer, explain that you do not know the answer. ` +
   `Do not make up an answer. ` +
   `Never say that you are providing "advice".`;
@@ -158,26 +175,32 @@ const _planWithoutIdeas: ZodTypeAny = z.object({
               description: z
                 .string()
                 .describe(
-                  "The 1-2 sentence description of the actions taken in this step. The description should be specific, measurable, achievable, relevant, and time-bound."
+                  "An AI message to the user that describes the action and how it helps achieve the goal. This should be specific, measurable, achievable, relevant, and time-bound. Max. 2 sentences.",
                 ),
             }),
-          })
+          }),
         )
         .describe("The steps of the plan")
-        .max(5),
+        .max(5)
+        .min(3),
     })
     .describe(
-      "An action plan to manage the financial aspects of a user request."
+      "An action plan prepared to manage the financial aspects of a user request.",
     ),
 });
 
 const _planWithIdeas: ZodTypeAny = z.object({
+  text: z
+    .string()
+    .describe(
+      "An AI message to send to the user about the plan, formatted in Markdown.",
+    ),
   plan: z
     .object({
       goal: z
         .string()
         .describe(
-          "The specific, measurable, achievable, relevant, and time-bound goal of the plan that starts with a verb."
+          "The specific, measurable, achievable, relevant, and time-bound goal of the plan that starts with a verb.",
         ),
       steps: z
         .array(
@@ -188,34 +211,35 @@ const _planWithIdeas: ZodTypeAny = z.object({
               description: z
                 .string()
                 .describe(
-                  "The description of the action. This should be specific, measurable, achievable, relevant, and time-bound. Max. 2 sentences."
+                  "An AI message to the user that describes the action and how it helps achieve the goal. This should be specific, measurable, achievable, relevant, and time-bound. Max. 2 sentences.",
                 ),
               ideas: z.object({
                 mostObvious: z
                   .string()
                   .describe(
-                    "The most obvious way for the user to execute this step of this plan, tailored to their goal. Max. 1 sentence."
+                    "An AI message to the user that describes the most obvious way for the user to execute this step of this plan, tailored to their goal. Max. 1 sentence.",
                   ),
                 leastObvious: z
                   .string()
                   .describe(
-                    "The least obvious way for the user to execute this step of this plan, tailored to their goal. Max. 1 sentence."
+                    "An AI message to the user that describes the least obvious way for the user to execute this step of this plan, tailored to their goal. Max. 1 sentence.",
                   ),
                 inventiveOrImaginative: z
                   .string()
                   .describe(
-                    "The most inventive or imaginative way for the user to execute this step of this plan, tailored to their goal. Max. 1 sentence."
+                    "An AI message to the user that describes the most inventive or imaginative way for the user to execute this step of this plan, tailored to their goal. Max. 1 sentence.",
                   ),
                 rewardingOrSustainable: z
                   .string()
                   .describe(
-                    "The most rewarding or sustainable way for the user to execute this step of this plan, tailored to their goal. Do not suggest credit cards. Max. 1 sentence."
+                    "An AI message to the user that describes the most rewarding or sustainable way for the user to execute this step of this plan, tailored to their goal. Do not suggest credit cards. Max. 1 sentence.",
                   ),
               }),
             }),
           }),
         )
         .describe("The steps of the plan")
+        .min(3)
         .max(5),
     })
     .describe(
@@ -253,13 +277,13 @@ const _planWithIdeas: ZodTypeAny = z.object({
 //   `of a user request." }}, "required": ["text", "question", "plan"], "additionalProperties": false, "$schema": ` +
 //   `"http://json-schema.org/draft-07/schema#"}\n\`\`\`\n`;
 
-function convertToSeraResponse(response: string, chat: number): SeraResponse {
-  let responseJson;
-
+function convertToBaseSeraResponse(response: string): BaseSeraResponse {
+  let baseSeraResponse: BaseSeraResponse;
   const openingBraceIndex = response.indexOf("{");
   const closingBraceIndex = response.lastIndexOf("}");
+
   if (openingBraceIndex === -1 || closingBraceIndex === -1) {
-    responseJson = {
+    baseSeraResponse = {
       text: response,
     };
   } else {
@@ -307,14 +331,25 @@ function convertToSeraResponse(response: string, chat: number): SeraResponse {
 
     console.log("Potential JSON:", potentialJson);
 
-    responseJson = JSON.parse(potentialJson);
-    if (Object.keys(responseJson.plan).length === 0) {
-      delete responseJson.plan;
-    }
+    baseSeraResponse = JSON.parse(potentialJson);
+  }
+
+  console.log("Converted to baseSeraResponse:", baseSeraResponse);
+  return baseSeraResponse;
+}
+
+function convertToSeraResponse(response: string, chat: number): SeraResponse {
+  const baseSeraResponse = convertToBaseSeraResponse(response);
+
+  if (
+    baseSeraResponse.plan && Object.keys(baseSeraResponse.plan).length === 0
+  ) {
+    console.log("Removing empty plan");
+    delete baseSeraResponse.plan;
   }
 
   const seraResponse = {
-    ...responseJson,
+    ...baseSeraResponse,
     chat: chat,
   };
 
@@ -326,7 +361,7 @@ function convertToSeraResponse(response: string, chat: number): SeraResponse {
 export async function handleRequest(
   model: ChatOpenAI,
   supabaseClient: SupabaseClient<Database>,
-  request: SeraRequest
+  request: SeraRequest,
 ): Promise<PlanArtifacts> {
   console.log("Handling request");
 
@@ -346,54 +381,58 @@ export async function handleRequest(
   messages.push(humanChatMessage);
   await _internals.createChatLine(supabaseClient, humanChatMessage, chat);
 
-  // Get user persona
-  const userPersonaPromptTemplate = new PromptTemplate({
-    template:
-      '{user_persona_prompt_premise}\nSearch terms:\n"""{search_terms}"""',
-    inputVariables: ["user_persona_prompt_premise", "search_terms"],
-  });
-  // TODO: add that they are interested in online learning
-  const userPersonaPromptPremise =
-    `You are an empathetic AI personal finance guide that helps users improve their budgeting, saving, and other ` +
-    `financial literacy skills. ` +
-    `You believe there are financial goals related to every aspect of life. ` +
-    `Describe the most likely goals and personality of someone who inputs the search terms delimited by """ below. ` +
-    `Unless you know otherwise, assume the person is also concerned ` +
-    `with inflation, has very little savings, has very little experience budgeting, is open to ` +
-    `new or additional jobs, is open to online learning, and wants to reduce the costs or increase the earnings from buying, selling, ` +
-    `visiting, using, or achieving the search terms. Your response should be one paragraph.`;
-  const searchTerms = messages
-    .filter((m) => m._getType() === "human")
-    .map((m) => m.text)
-    .join(", ");
-  const userPersonaPrompt = await userPersonaPromptTemplate.format({
-    user_persona_prompt_premise: userPersonaPromptPremise,
-    search_terms: searchTerms,
-  });
-  const userPersonaMessage = new SystemChatMessage(userPersonaPrompt);
-  console.log("Calling OpenAI to get user persona", userPersonaMessage);
-  const userPersonaResponse = await model.call([userPersonaMessage]);
-  const userPersonaResponseText = userPersonaResponse.text;
-  console.log("Got user persona response: ", userPersonaResponseText);
+  // // Get user persona
+  // const userPersonaPromptTemplate = new PromptTemplate({
+  //   template:
+  //     '{user_persona_prompt_premise}\nSearch terms:\n"""{search_terms}"""',
+  //   inputVariables: ["user_persona_prompt_premise", "search_terms"],
+  // });
+  // // TODO: add that they are interested in online learning
+  // const userPersonaPromptPremise =
+  //   `You are an empathetic AI personal finance guide that helps users improve their budgeting, saving, and other ` +
+  //   `financial literacy skills. ` +
+  //   `You believe there are financial goals related to every aspect of life. ` +
+  //   `Describe the most likely goals and personality of someone who inputs the search terms delimited by """ below. ` +
+  //   `Unless you know otherwise, assume the person is also concerned ` +
+  //   `with inflation, has very little savings, has very little experience budgeting, is open to ` +
+  //   `new or additional jobs, is open to online learning, and wants to reduce the costs or increase the earnings from buying, selling, ` +
+  //   `visiting, using, or achieving the search terms. Your response should be one paragraph.`;
+  // const searchTerms = messages
+  //   .filter((m) => m._getType() === "human")
+  //   .map((m) => m.text)
+  //   .join(", ");
+  // const userPersonaPrompt = await userPersonaPromptTemplate.format({
+  //   user_persona_prompt_premise: userPersonaPromptPremise,
+  //   search_terms: searchTerms,
+  // });
+  // const userPersonaMessage = new SystemChatMessage(userPersonaPrompt);
+  // console.log("Calling OpenAI to get user persona", userPersonaMessage);
+  // const userPersonaResponse = await model.call([userPersonaMessage]);
+  // const userPersonaResponseText = userPersonaResponse.text;
+  // console.log("Got user persona response: ", userPersonaResponseText);
 
   const prompt = new PromptTemplate({
     template:
-      '{premise}\n{format_instructions}\nUser Persona:\n+++\n{user_persona}\n+++\nMessages:\n"""\n{messages}\n"""',
+      // '{premise}\n{format_instructions}\nUser Persona:\n+++\n{user_persona}\n+++\nMessages:\n"""\n{messages}\n"""',
+      '{premise}\n{format_instructions}\n+++\nMessages:\n"""\n{messages}\n"""',
     inputVariables: [
       "premise",
       "format_instructions",
-      "user_persona",
+      // "user_persona",
       "messages",
     ],
   });
 
-  const parser = StructuredOutputParser.fromZodSchema(_planWithoutIdeas);
+  const parser = StructuredOutputParser.fromZodSchema(_planWithIdeas);
   const formatInstructions = parser.getFormatInstructions();
-  const mappedMessages = messages.map((m) => m._getType() + ": " + m.text);
+  const mappedMessages = messages.map((m) => {
+    console.log("Mapping message", m._getType(), m.text);
+    return m._getType() + ": " + m.text;
+  });
   const input = await prompt.format({
     premise: premise,
     format_instructions: formatInstructions,
-    user_persona: userPersonaResponseText,
+    // user_persona: userPersonaResponseText,
     messages: mappedMessages.join("\n"),
   });
   const planRequestMessage = new SystemChatMessage(input);
@@ -406,7 +445,7 @@ export async function handleRequest(
   const aiChatLine = await _internals.createChatLine(
     supabaseClient,
     aiChatMessage,
-    chat
+    chat,
   );
   const seraResponse = convertToSeraResponse(aiChatMessage.text, chat);
 
@@ -416,14 +455,14 @@ export async function handleRequest(
   await _internals.updateChatLineMessage(
     supabaseClient,
     aiChatLine,
-    processedResponse
+    processedResponse,
   );
 
   console.log("Returning processed response from LLM:", seraResponse);
 
   const planArtifacts = {
     seraResponse: seraResponse,
-    userPersona: userPersonaResponseText,
+    userPersona: "userPersonaResponseText",
     chatLine: aiChatLine,
   };
 
@@ -440,54 +479,60 @@ export async function addIdeasToPlan(
   const ideasPremise =
     `You are an empathetic, emotionally-aware, and imaginative AI personal finance guide. ` +
     `You are very creative and open-minded when it comes to finding financial aspects to requests. ` +
-    `You have determined the persona of the user, delimited by +++ below. ` +
+    // `You have determined the persona of the user, delimited by +++ below. ` +
     `You have created a plan for the user, delimited by """ below. ` +
     `Your task is to add ideas to the plan. ` +
     `Do not change the goal or the steps.`;
 
   const prompt = new PromptTemplate({
     template:
-      '{ideas_premise}\n{format_instructions}\nUser Persona:\n+++\n{user_persona}\n+++\nPlan:\n"""\n{plan}\n"""',
+      // '{ideas_premise}\n{format_instructions}\nUser Persona:\n+++\n{user_persona}\n+++\nPlan:\n"""\n{plan}\n"""',
+      '{ideas_premise}\n{format_instructions}\nPlan:\n"""\n{plan}\n"""',
     inputVariables: [
       "ideas_premise",
       "format_instructions",
-      "user_persona",
+      // "user_persona",
       "plan",
     ],
   });
 
-  const planWithIdeasParser =
-    StructuredOutputParser.fromZodSchema(_planWithIdeas);
+  const planWithIdeasParser = StructuredOutputParser.fromZodSchema(
+    _planWithIdeas,
+  );
   const formatInstructions = planWithIdeasParser.getFormatInstructions();
   const planWithIdeasInput = await prompt.format({
     ideas_premise: ideasPremise,
     format_instructions: formatInstructions,
-    user_persona: planArtifacts.userPersona,
+    // user_persona: planArtifacts.userPersona,
     plan: JSON.stringify(planArtifacts.seraResponse.plan, null, 2),
   });
   const planWithIdeasRequestMessage = new SystemChatMessage(planWithIdeasInput);
 
   console.log(
     "Calling OpenAI to add ideas to the plan",
-    planWithIdeasRequestMessage
+    planWithIdeasRequestMessage,
   );
 
   // Calls OpenAI
   const planWithIdeasResponse = await model.call([planWithIdeasRequestMessage]);
 
   console.log("Got planWithIdeasResponse from OpenAI", planWithIdeasResponse);
-
-  const aiStrippedResponse2 = stripAIPrefixFromResponse(
-    planWithIdeasResponse.text
+  const baseSeraResponseWithIdeas = convertToBaseSeraResponse(
+    planWithIdeasResponse.text,
   );
-  const preambleStrippedResponse2 =
-    stripPreambleFromResponse(aiStrippedResponse2);
-  const cleanedResponse2 = cleanResponse(preambleStrippedResponse2);
-  const planWithIdeas = JSON.parse(cleanedResponse2).plan;
+
+  if (
+    !baseSeraResponseWithIdeas.plan ||
+    Object.keys(baseSeraResponseWithIdeas.plan).length === 0
+  ) {
+    throw new Error("Plan is missing from response");
+  }
+
+  const planWithIdeas = baseSeraResponseWithIdeas.plan;
 
   console.log(
     "Substituting plan without ideas for plan with ideas",
-    JSON.stringify(planWithIdeas, null, 2)
+    JSON.stringify(planWithIdeas, null, 2),
   );
 
   // Update chat line plan with ideas
@@ -497,7 +542,7 @@ export async function addIdeasToPlan(
   await _internals.updateChatLineMessage(
     supabaseClient,
     planArtifacts.chatLine,
-    processedResponse
+    processedResponse,
   );
 
   return planWithIdeas;

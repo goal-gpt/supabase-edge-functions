@@ -17,18 +17,18 @@ export class Sera {
     const model = _llmInternals.getChatOpenAI();
     const supabaseClient = _supabaseClientInternals.createClient();
 
-    const planArtifacts =
-      await _privilegedRequestHandlerInternals.handleRequest(
+    const planArtifacts = await _privilegedRequestHandlerInternals
+      .handleRequest(
         model,
         supabaseClient,
-        seraRequest
+        seraRequest,
       );
 
     return planArtifacts;
   }
 
   async handleAddingIdeasToPlan(
-    planArtifacts: PlanArtifacts
+    planArtifacts: PlanArtifacts,
   ): Promise<PlanArtifacts> {
     console.log("Handling adding ideas to plan:", planArtifacts);
     const model = _llmInternals.getChatOpenAI();
@@ -37,7 +37,7 @@ export class Sera {
     const plan = await _privilegedRequestHandlerInternals.addIdeasToPlan(
       model,
       supabaseClient,
-      planArtifacts
+      planArtifacts,
     );
 
     planArtifacts.seraResponse.plan = plan;
