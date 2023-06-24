@@ -1,7 +1,6 @@
 import { Sera, SeraRequest } from "./sera.ts";
 import {
   _internals as _privilegedRequestHandlerInternals,
-  PlanArtifacts,
   SeraResponse,
 } from "./privilegedRequestHandler.ts";
 import { assert } from "testing/asserts.ts";
@@ -22,29 +21,24 @@ Deno.test("sera", async (t) => {
         text: "How may I assist you?",
         chat: seraRequestMock.chat!,
       };
-      const planArtifactsMock: PlanArtifacts = {
-        seraResponse: seraResponseMock,
-        userPersona: "mock user persona",
-        chatLine: 1,
-      };
-      const planArtifactsPromiseMock = new Promise<PlanArtifacts>((resolve) => {
-        resolve(planArtifactsMock);
+      const seraResponsePromiseMock = new Promise<SeraResponse>((resolve) => {
+        resolve(seraResponseMock);
       });
       const createClientStub = stub(_supabaseClientInternals, "createClient");
       const getChatOpenAIStub = stub(_llmInternals, "getChatOpenAI");
       const handleRequestStub = stub(
         _privilegedRequestHandlerInternals,
         "handleRequest",
-        returnsNext([planArtifactsPromiseMock]),
+        returnsNext([seraResponsePromiseMock]),
       );
 
-      const planArtifacts = await new Sera().handleRequest(seraRequestMock);
+      const seraResponse = await new Sera().handleRequest(seraRequestMock);
 
       assertSpyCalls(createClientStub, 1);
       assertSpyCalls(getChatOpenAIStub, 1);
       assertSpyCalls(handleRequestStub, 1);
-      assert(planArtifacts.seraResponse.text === seraResponseMock.text);
-      assert(planArtifacts.seraResponse.chat === seraResponseMock.chat);
+      assert(seraResponse.text === seraResponseMock.text);
+      assert(seraResponse.chat === seraResponseMock.chat);
     },
   );
 });

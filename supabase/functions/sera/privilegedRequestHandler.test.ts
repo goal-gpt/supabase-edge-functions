@@ -20,6 +20,7 @@ import {
 Deno.test("handleRequest", async (t) => {
   const supabaseClientStub = sinon.createStubInstance(SupabaseClient);
   const chat = 1;
+  const chatLine = 1;
   const modelResponsePreamble =
     "I suggest starting by creating a budget to determine how much money you can allocate towards job searching. " +
     "Then, research companies and job openings that match your skills and interests. You can use job search websites " +
@@ -61,6 +62,9 @@ Deno.test("handleRequest", async (t) => {
       const chatPromise = new Promise<number>((resolve) => {
         resolve(chat);
       });
+      const chatLinePromise = new Promise<number>((resolve) => {
+        resolve(chatLine);
+      });
       const createChatStub = stub(
         _privilegedRequestHandlerInternals,
         "createChat",
@@ -69,22 +73,28 @@ Deno.test("handleRequest", async (t) => {
       const createChatLineStub = stub(
         _privilegedRequestHandlerInternals,
         "createChatLine",
+        returnsNext([chatLinePromise, chatLinePromise]),
       );
 
-      const planArtifacts = await _privilegedRequestHandlerInternals.handleRequest(
-        modelStubWithCall,
-        supabaseClientStub,
-        seraRequest,
+      stub(
+        _privilegedRequestHandlerInternals,
+        "updateChatLineMessage"
       );
+      const seraResponse = await _privilegedRequestHandlerInternals
+        .handleRequest(
+          modelStubWithCall,
+          supabaseClientStub,
+          seraRequest,
+        );
 
       assertSpyCalls(createChatStub, 1);
       assertSpyCalls(createChatLineStub, 2);
-      assertStrictEquals(planArtifacts.seraResponse.text, modelResponseJson.text);
+      assertStrictEquals(seraResponse.text, modelResponseJson.text);
       assertStrictEquals(
-        JSON.stringify(planArtifacts.seraResponse.plan),
+        JSON.stringify(seraResponse.plan),
         JSON.stringify(modelResponseJson.plan),
       );
-      assertEquals(planArtifacts.seraResponse.chat, chat);
+      assertEquals(seraResponse.chat, chat);
 
       createChatStub.restore();
       createChatLineStub.restore();
@@ -145,7 +155,7 @@ Deno.test("handleRequest", async (t) => {
       },
     );
 
-    const planArtifacts = await _privilegedRequestHandlerInternals.handleRequest(
+    const seraResponse = await _privilegedRequestHandlerInternals.handleRequest(
       modelStubWithCallForBadResponseWithPlan,
       supabaseClientStub,
       seraRequest,
@@ -164,12 +174,12 @@ Deno.test("handleRequest", async (t) => {
       chat: chat,
     };
 
-    assertStrictEquals(planArtifacts.seraResponse.text, expectedResponse.text);
+    assertStrictEquals(seraResponse.text, expectedResponse.text);
     assertStrictEquals(
-      JSON.stringify(planArtifacts.seraResponse.plan),
+      JSON.stringify(seraResponse.plan),
       JSON.stringify(expectedResponse.plan),
     );
-    assertEquals(planArtifacts.seraResponse.chat, chat);
+    assertEquals(seraResponse.chat, chat);
 
     createChatStub.restore();
   });
@@ -193,7 +203,7 @@ Deno.test("handleRequest", async (t) => {
       },
     );
 
-    const planArtifacts = await _privilegedRequestHandlerInternals.handleRequest(
+    const seraResponse = await _privilegedRequestHandlerInternals.handleRequest(
       modelStubWithCallForResponseWithoutPlan,
       supabaseClientStub,
       seraRequest,
@@ -204,10 +214,10 @@ Deno.test("handleRequest", async (t) => {
       chat: chat,
     };
 
-    assertStrictEquals(planArtifacts.seraResponse.text, expectedResponse.text);
-    assert(!Object.keys(planArtifacts).includes("plan"));
-    assert(!Object.keys(planArtifacts).includes("question"));
-    assertEquals(planArtifacts.seraResponse.chat, chat);
+    assertStrictEquals(seraResponse.text, expectedResponse.text);
+    assert(!Object.keys(seraResponse).includes("plan"));
+    assert(!Object.keys(seraResponse).includes("question"));
+    assertEquals(seraResponse.chat, chat);
 
     createChatStub.restore();
   });
@@ -235,15 +245,16 @@ Deno.test("handleRequest", async (t) => {
           },
         );
 
-      const planArtifacts = await _privilegedRequestHandlerInternals.handleRequest(
-        modelStubWithCallForResponseWithTrickyKeys,
-        supabaseClientStub,
-        seraRequest,
-      );
+      const seraResponse = await _privilegedRequestHandlerInternals
+        .handleRequest(
+          modelStubWithCallForResponseWithTrickyKeys,
+          supabaseClientStub,
+          seraRequest,
+        );
 
-      assert(planArtifacts.seraResponse.text);
-      assert(planArtifacts.seraResponse.plan);
-      assert(planArtifacts.seraResponse.chat);
+      assert(seraResponse.text);
+      assert(seraResponse.plan);
+      assert(seraResponse.chat);
 
       createChatStub.restore();
     },

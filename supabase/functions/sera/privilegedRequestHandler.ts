@@ -10,7 +10,6 @@ import { Database } from "../../types/supabase.ts";
 import { SeraRequest } from "./sera.ts";
 import { z, ZodTypeAny } from "zod";
 import { PromptTemplate } from "langchain/prompts";
-import { StructuredOutputParser } from "langchain/output_parsers";
 
 async function getAllChatLines(
   supabaseClient: SupabaseClient<Database>,
@@ -126,16 +125,9 @@ export interface SeraResponse extends BaseSeraResponse {
   chat: number;
 }
 
-export interface PlanArtifacts {
-  seraResponse: SeraResponse;
-  userPersona: string;
-  chatLine: number;
-}
-
 export const premise =
   `You are an empathetic, emotionally-aware, and imaginative AI personal finance guide. ` +
   `You are very creative and open-minded when it comes to finding financial aspects to requests. ` +
-  // `You have determined the persona of the user, delimited by +++ below. ` +
   `Your task is to make a plan for the user that helps them resolve their financial concerns or achieve their financial goals, ` +
   `based on the messages between you and the user, delimited by """. ` +
   `If you cannot determine the user's financial concerns or goals based on the messages, ` +
@@ -153,43 +145,7 @@ export const premise =
 // TODO: this results in a type error when used with the StructuredOutputParser: "TS2589 [ERROR]: Type instantiation is excessively deep and possibly infinite."
 //       For now, I've hard-coded the output as a template literal, "format_instructions", for the prompt
 // underscore prefix is to tell Deno lint to ignore this unused variable
-const _planWithoutIdeas: ZodTypeAny = z.object({
-  text: z
-    .string()
-    .describe(
-      "An AI message to send to the user about the plan, formatted in Markdown.",
-    ),
-  plan: z
-    .object({
-      goal: z
-        .string()
-        .describe(
-          "The specific, measurable, achievable, relevant, and time-bound goal of the plan that starts with a verb.",
-        ),
-      steps: z
-        .array(
-          z.object({
-            number: z.number().describe("The number of the step."),
-            action: z.object({
-              name: z.string().describe("The name of the step."),
-              description: z
-                .string()
-                .describe(
-                  "An AI message to the user that describes the action and how it helps achieve the goal. This should be specific, measurable, achievable, relevant, and time-bound. Max. 2 sentences.",
-                ),
-            }),
-          }),
-        )
-        .describe("The steps of the plan")
-        .max(5)
-        .min(3),
-    })
-    .describe(
-      "An action plan prepared to manage the financial aspects of a user request.",
-    ),
-});
-
-const _planWithIdeas: ZodTypeAny = z.object({
+const _formatInstructions: ZodTypeAny = z.object({
   text: z
     .string()
     .describe(
@@ -251,32 +207,8 @@ const _planWithIdeas: ZodTypeAny = z.object({
 // It is long and it would be easier to read it if it were formatted as a template literal, but that would make it harder to update
 // TODO: refactor to use variables for _responseWithJsonSchema and format_instructions so that
 //       they remain in sync
-// const formatInstructions =
-//   'You must format your output as a JSON value that adheres to a given "JSON Schema" instance.\n\n"JSON Schema" is a declarative language that allows you to annotate and validate JSON documents.\n\nFor example, the example "JSON Schema" instance {{"properties": {{"foo": {{"description": "a list of test words", "type": "array", "items": {{"type": "string"}}}}}}, "required": ["foo"]}}}}\nwould match an object with one required property, "foo". The "type" property specifies "foo" must be an "array", and the "description" property semantically describes it as "a list of test words". The items within "foo" must be strings.\nThus, the object {{"foo": ["bar", "baz"]}} is a well-formatted instance of this example "JSON Schema". The object {{"properties": {{"foo": ["bar", "baz"]}}}} is not well-formatted.\n\nYour output will be parsed and type-checked according to the provided schema instance, so make sure all fields in your output match the schema exactly and there are no trailing commas!\n\nHere is the JSON Schema instance your output must adhere to. Include the enclosing markdown codeblock:\n```json\n{"type":"object","properties":{"text":{"type":"string","description":"An AI message to send to the user about the plan, formatted in Markdown."},"question":{"type":"string","description":"An AI message asking the user if the plan is right for them and if they can do the steps, formatted in Markdown."},"plan":{"type":"object","properties":{"goal":{"type":"string","description":"The specific, measurable, achievable, relevant, and time-bound goal of the plan that starts with a verb."},"steps":{"type":"array","items":{"type":"object","properties":{"number":{"type":"number","description":"The number of the step."},"action":{"type":"object","properties":{"name":{"type":"string","description":"The name of the action."},"description":{"type":"string","description":"The description of the action. This should be specific, measurable, achievable, relevant, and time-bound."}},"required":["name","description"],"additionalProperties":false}},"required":["number","action"],"additionalProperties":false},"description":"The steps of the plan"}},"required":["goal","steps"],"additionalProperties":false,"description":"An action plan to manage the financial aspects of a user request."}},"required":["text","question","plan"],"additionalProperties":false,"$schema":"http://json-schema.org/draft-07/schema#"}\n```\n';
-// const format_instructions =
-//   `You must format your output as a JSON value that adheres to a given "JSON Schema" instance.\n\n"JSON Schema" is a ` +
-//   `declarative language that allows you to annotate and validate JSON documents.\n\nFor example, the example ` +
-//   `"JSON Schema" instance { { "properties": { { "foo": { { "description": "a list of test words", "type": ` +
-//   `"array", "items": { { "type": "string" } } } } } }, "required": ["foo"] } }}}\nwould match an object with ` +
-//   `one required property, "foo".The "type" property specifies "foo" must be an "array", and the "description" ` +
-//   `property semantically describes it as "a list of test words".The items within "foo" must be strings.\nThus, ` +
-//   `the object { { "foo": ["bar", "baz"] } } is a well - formatted instance of this example "JSON Schema". ` +
-//   `The object { { "properties": { { "foo": ["bar", "baz"] } } } } is not well - formatted.\n\nYour output will ` +
-//   `be parsed and type - checked according to the provided schema instance, so make sure all fields in your output ` +
-//   `match the schema exactly and there are no trailing commas!\n\nHere is the JSON Schema instance your output must ` +
-//   `adhere to.Include the enclosing markdown codeblock: \n\`\`\`json\n{"type":"object","properties":{"text":{"type":` +
-//   `"string","description": "An AI message to send to the user about the plan, formatted in Markdown."}, "question": ` +
-//   `{ "type": "string", "description": "An AI message asking the user if the plan is right for them and if they can ` +
-//   `do the steps, formatted in Markdown" }, "plan": { "type": "object", "properties": { "goal": { "type": "string", ` +
-//   `"description": "The specific, measurable, achievable, relevant, and time - bound goal of the plan that starts ` +
-//   `with a verb" }, "steps": { "type": "array", "items": { "type": "object", "properties": { "number": { "type": ` +
-//   `"number", "description": "The number of the step" }, "action": { "type": "string", "description": "The description ` +
-//   `of the step. This should be specific, measurable, achievable, relevant, and time-bound." } }, "required": ` +
-//   `["number", "action"], "additionalProperties": false }, "description": "The steps of the plan" } }, "required": ` +
-//   `["goal", "steps"], "additionalProperties": false, "description": "An action plan to manage the financial aspects ` +
-//   `of a user request." }}, "required": ["text", "question", "plan"], "additionalProperties": false, "$schema": ` +
-//   `"http://json-schema.org/draft-07/schema#"}\n\`\`\`\n`;
-
+const formatInstructions =
+  'You must format your output as a JSON value that adheres to a given "JSON Schema" instance.\n\n"JSON Schema" is a declarative language that allows you to annotate and validate JSON documents.\n\nFor example, the example "JSON Schema" instance {{"properties": {{"foo": {{"description": "a list of test words", "type": "array", "items": {{"type": "string"}}}}}}, "required": ["foo"]}}}}\nwould match an object with one required property, "foo". The "type" property specifies "foo" must be an "array", and the "description" property semantically describes it as "a list of test words". The items within "foo" must be strings.\nThus, the object {{"foo": ["bar", "baz"]}} is a well-formatted instance of this example "JSON Schema". The object {{"properties": {{"foo": ["bar", "baz"]}}}} is not well-formatted.\n\nYour output will be parsed and type-checked according to the provided schema instance, so make sure all fields in your output match the schema exactly and there are no trailing commas!\n\nHere is the JSON Schema instance your output must adhere to. Include the enclosing markdown codeblock:\n```json\n{"type":"object","properties":{"text":{"type":"string","description":"An AI message to send to the user about the plan, formatted in Markdown."},"plan":{"type":"object","properties":{"goal":{"type":"string","description":"The specific, measurable, achievable, relevant, and time-bound goal of the plan that starts with a verb."},"steps":{"type":"array","items":{"type":"object","properties":{"number":{"type":"number","description":"The number of the step."},"action":{"type":"object","properties":{"name":{"type":"string","description":"The name of the action."},"description":{"type":"string","description":"An AI message to the user that describes the action and how it helps achieve the goal. This should be specific, measurable, achievable, relevant, and time-bound. Max. 2 sentences."},"ideas":{"type":"object","properties":{"mostObvious":{"type":"string","description":"An AI message to the user that describes the most obvious way for the user to execute this step of this plan, tailored to their goal. Max. 1 sentence."},"leastObvious":{"type":"string","description":"An AI message to the user that describes the least obvious way for the user to execute this step of this plan, tailored to their goal. Max. 1 sentence."},"inventiveOrImaginative":{"type":"string","description":"An AI message to the user that describes the most inventive or imaginative way for the user to execute this step of this plan, tailored to their goal. Max. 1 sentence."},"rewardingOrSustainable":{"type":"string","description":"An AI message to the user that describes the most rewarding or sustainable way for the user to execute this step of this plan, tailored to their goal. Do not suggest credit cards. Max. 1 sentence."}},"required":["mostObvious","leastObvious","inventiveOrImaginative","rewardingOrSustainable"],"additionalProperties":false}},"required":["name","description","ideas"],"additionalProperties":false}},"required":["number","action"],"additionalProperties":false},"minItems":3,"maxItems":5,"description":"The steps of the plan"}},"required":["goal","steps"],"additionalProperties":false,"description":"An action plan to manage the financial aspects of a user request."}},"required":["text","plan"],"additionalProperties":false,"$schema":"http://json-schema.org/draft-07/schema#"}\n```\n';
 function convertToBaseSeraResponse(response: string): BaseSeraResponse {
   let baseSeraResponse: BaseSeraResponse;
   const openingBraceIndex = response.indexOf("{");
@@ -362,7 +294,7 @@ export async function handleRequest(
   model: ChatOpenAI,
   supabaseClient: SupabaseClient<Database>,
   request: SeraRequest,
-): Promise<PlanArtifacts> {
+): Promise<SeraResponse> {
   console.log("Handling request");
 
   const messages: BaseChatMessage[] = [];
@@ -381,58 +313,20 @@ export async function handleRequest(
   messages.push(humanChatMessage);
   await _internals.createChatLine(supabaseClient, humanChatMessage, chat);
 
-  // // Get user persona
-  // const userPersonaPromptTemplate = new PromptTemplate({
-  //   template:
-  //     '{user_persona_prompt_premise}\nSearch terms:\n"""{search_terms}"""',
-  //   inputVariables: ["user_persona_prompt_premise", "search_terms"],
-  // });
-  // // TODO: add that they are interested in online learning
-  // const userPersonaPromptPremise =
-  //   `You are an empathetic AI personal finance guide that helps users improve their budgeting, saving, and other ` +
-  //   `financial literacy skills. ` +
-  //   `You believe there are financial goals related to every aspect of life. ` +
-  //   `Describe the most likely goals and personality of someone who inputs the search terms delimited by """ below. ` +
-  //   `Unless you know otherwise, assume the person is also concerned ` +
-  //   `with inflation, has very little savings, has very little experience budgeting, is open to ` +
-  //   `new or additional jobs, is open to online learning, and wants to reduce the costs or increase the earnings from buying, selling, ` +
-  //   `visiting, using, or achieving the search terms. Your response should be one paragraph.`;
-  // const searchTerms = messages
-  //   .filter((m) => m._getType() === "human")
-  //   .map((m) => m.text)
-  //   .join(", ");
-  // const userPersonaPrompt = await userPersonaPromptTemplate.format({
-  //   user_persona_prompt_premise: userPersonaPromptPremise,
-  //   search_terms: searchTerms,
-  // });
-  // const userPersonaMessage = new SystemChatMessage(userPersonaPrompt);
-  // console.log("Calling OpenAI to get user persona", userPersonaMessage);
-  // const userPersonaResponse = await model.call([userPersonaMessage]);
-  // const userPersonaResponseText = userPersonaResponse.text;
-  // console.log("Got user persona response: ", userPersonaResponseText);
-
   const prompt = new PromptTemplate({
     template:
-      // '{premise}\n{format_instructions}\nUser Persona:\n+++\n{user_persona}\n+++\nMessages:\n"""\n{messages}\n"""',
       '{premise}\n{format_instructions}\n+++\nMessages:\n"""\n{messages}\n"""',
     inputVariables: [
       "premise",
       "format_instructions",
-      // "user_persona",
       "messages",
     ],
   });
 
-  const parser = StructuredOutputParser.fromZodSchema(_planWithIdeas);
-  const formatInstructions = parser.getFormatInstructions();
-  const mappedMessages = messages.map((m) => {
-    console.log("Mapping message", m._getType(), m.text);
-    return m._getType() + ": " + m.text;
-  });
+  const mappedMessages = messages.map((m) => m._getType() + ": " + m.text);
   const input = await prompt.format({
     premise: premise,
     format_instructions: formatInstructions,
-    // user_persona: userPersonaResponseText,
     messages: mappedMessages.join("\n"),
   });
   const planRequestMessage = new SystemChatMessage(input);
@@ -460,92 +354,7 @@ export async function handleRequest(
 
   console.log("Returning processed response from LLM:", seraResponse);
 
-  const planArtifacts = {
-    seraResponse: seraResponse,
-    userPersona: "userPersonaResponseText",
-    chatLine: aiChatLine,
-  };
-
-  return planArtifacts;
-}
-
-export async function addIdeasToPlan(
-  model: ChatOpenAI,
-  supabaseClient: SupabaseClient<Database>,
-  planArtifacts: PlanArtifacts,
-): Promise<Plan> {
-  console.log("Adding ideas to plan");
-
-  const ideasPremise =
-    `You are an empathetic, emotionally-aware, and imaginative AI personal finance guide. ` +
-    `You are very creative and open-minded when it comes to finding financial aspects to requests. ` +
-    // `You have determined the persona of the user, delimited by +++ below. ` +
-    `You have created a plan for the user, delimited by """ below. ` +
-    `Your task is to add ideas to the plan. ` +
-    `Do not change the goal or the steps.`;
-
-  const prompt = new PromptTemplate({
-    template:
-      // '{ideas_premise}\n{format_instructions}\nUser Persona:\n+++\n{user_persona}\n+++\nPlan:\n"""\n{plan}\n"""',
-      '{ideas_premise}\n{format_instructions}\nPlan:\n"""\n{plan}\n"""',
-    inputVariables: [
-      "ideas_premise",
-      "format_instructions",
-      // "user_persona",
-      "plan",
-    ],
-  });
-
-  const planWithIdeasParser = StructuredOutputParser.fromZodSchema(
-    _planWithIdeas,
-  );
-  const formatInstructions = planWithIdeasParser.getFormatInstructions();
-  const planWithIdeasInput = await prompt.format({
-    ideas_premise: ideasPremise,
-    format_instructions: formatInstructions,
-    // user_persona: planArtifacts.userPersona,
-    plan: JSON.stringify(planArtifacts.seraResponse.plan, null, 2),
-  });
-  const planWithIdeasRequestMessage = new SystemChatMessage(planWithIdeasInput);
-
-  console.log(
-    "Calling OpenAI to add ideas to the plan",
-    planWithIdeasRequestMessage,
-  );
-
-  // Calls OpenAI
-  const planWithIdeasResponse = await model.call([planWithIdeasRequestMessage]);
-
-  console.log("Got planWithIdeasResponse from OpenAI", planWithIdeasResponse);
-  const baseSeraResponseWithIdeas = convertToBaseSeraResponse(
-    planWithIdeasResponse.text,
-  );
-
-  if (
-    !baseSeraResponseWithIdeas.plan ||
-    Object.keys(baseSeraResponseWithIdeas.plan).length === 0
-  ) {
-    throw new Error("Plan is missing from response");
-  }
-
-  const planWithIdeas = baseSeraResponseWithIdeas.plan;
-
-  console.log(
-    "Substituting plan without ideas for plan with ideas",
-    JSON.stringify(planWithIdeas, null, 2),
-  );
-
-  // Update chat line plan with ideas
-  planArtifacts.seraResponse.plan = planWithIdeas;
-  const processedResponse = JSON.stringify(planArtifacts.seraResponse);
-
-  await _internals.updateChatLineMessage(
-    supabaseClient,
-    planArtifacts.chatLine,
-    processedResponse,
-  );
-
-  return planWithIdeas;
+  return seraResponse;
 }
 
 // _internals are used for testing
@@ -554,6 +363,5 @@ export const _internals = {
   createChat,
   createChatLine,
   getAllChatLines,
-  addIdeasToPlan,
   updateChatLineMessage,
 };
