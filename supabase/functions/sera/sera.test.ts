@@ -36,14 +36,14 @@ Deno.test("sera", async (t) => {
         returnsNext([seraResponsePromiseMock]),
       );
 
-      const response = await new Sera().handleRequest(seraRequestMock);
+      const seraResponse = await new Sera().handleRequest(seraRequestMock);
 
       assertSpyCalls(createClientStub, 1);
       assertSpyCalls(getChatOpenAIStub, 1);
       assertSpyCalls(handleRequestStub, 1);
       assertSpyCalls(getEmbeddingsOpenAIStub, 1);
-      assert(response.text === seraResponseMock.text);
-      assert(response.chat === seraResponseMock.chat);
+      assert(seraResponse.text === seraResponseMock.text);
+      assert(seraResponse.chat === seraResponseMock.chat);
     },
   );
 });

@@ -1,5 +1,7 @@
 import { ChatOpenAI } from "langchain/chat_models/openai";
 import { OpenAIEmbeddings } from "langchain/embeddings/openai";
+import GPT3Tokenizer from "tokenizer";
+import { MatchDocumentsResponse } from "./supabaseClient.ts";
 
 export interface ModelsContext {
   chat: ChatOpenAI;
@@ -32,8 +34,32 @@ export async function getEmbeddingString(
   return JSON.stringify(embeddingVector);
 }
 
+export function truncateDocuments(
+  documents: MatchDocumentsResponse,
+  limit = 1500,
+): string {
+  let tokenCount = 0;
+  let text = "";
+
+  const tokenizer = new GPT3Tokenizer({ type: "gpt3" });
+  for (let i = 0; i < documents.length; i++) {
+    const document = documents[i];
+    const { link, title, raw_content: rawContent } = document;
+    const encoded = tokenizer.encode(rawContent);
+    tokenCount += encoded.text.length;
+
+    if (tokenCount > limit) {
+      break;
+    }
+
+    text += `[${title}](${link}) - ${rawContent.trim()}\n|\n`;
+  }
+  return text;
+}
+
 // _internals are used for testing
 export const _internals = {
+  truncateDocuments,
   getChatOpenAI,
   getEmbeddingsOpenAI,
   getEmbeddingString,

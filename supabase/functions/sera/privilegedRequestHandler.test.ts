@@ -11,6 +11,7 @@ import { ChatOpenAI } from "langchain/chat_models/openai";
 import { OpenAIEmbeddings } from "langchain/embeddings/openai";
 import * as sinon from "sinon";
 import {
+  assert,
   assertEquals,
   assertStrictEquals,
   assertStringIncludes,
@@ -24,6 +25,7 @@ import {
 // TODO: Determine how to make tests DRY-er
 Deno.test("handleRequest", async (t) => {
   const chat = 1;
+  const chatLine = 1;
   const modelResponsePreamble =
     "I suggest starting by creating a budget to determine how much money you can allocate towards job searching. " +
     "Then, research companies and job openings that match your skills and interests. You can use job search websites " +
@@ -95,6 +97,9 @@ Deno.test("handleRequest", async (t) => {
       const chatPromise = new Promise<number>((resolve) => {
         resolve(chat);
       });
+      const chatLinePromise = new Promise<number>((resolve) => {
+        resolve(chatLine);
+      });
       const createChatStub = stub(
         _privilegedRequestHandlerInternals,
         "createChat",
@@ -103,23 +108,28 @@ Deno.test("handleRequest", async (t) => {
       const createChatLineStub = stub(
         _privilegedRequestHandlerInternals,
         "createChatLine",
+        returnsNext([chatLinePromise, chatLinePromise]),
+      );
+      stub(
+        _privilegedRequestHandlerInternals,
+        "updateChatLineMessage",
       );
 
-      const response = await _privilegedRequestHandlerInternals.handleRequest(
-        modelsContextStub,
-        supabaseClientStub,
-        seraRequest,
-      );
+      const seraResponse = await _privilegedRequestHandlerInternals
+        .handleRequest(
+          modelsContextStub,
+          supabaseClientStub,
+          seraRequest,
+        );
 
       assertSpyCalls(createChatStub, 1);
       assertSpyCalls(createChatLineStub, 2);
-      assertStrictEquals(response.text, modelResponseJson.text);
+      assertStrictEquals(seraResponse.text, modelResponseJson.text);
       assertStrictEquals(
-        JSON.stringify(response.plan),
+        JSON.stringify(seraResponse.plan),
         JSON.stringify(modelResponseJson.plan),
       );
-      assertStrictEquals(response.question, modelResponseJson.question);
-      assertEquals(response.chat, chat);
+      assertEquals(seraResponse.chat, chat);
 
       sinon.assert.calledOnce(AIChatMessageStub);
       assertStringIncludes(
@@ -169,4 +179,147 @@ Deno.test("handleRequest", async (t) => {
 
     assertSpyCalls(getAllChatLinesStub, 1);
   });
+  await t.step("handles poorly formatted responses", async () => {
+    const text =
+      "Sure, let's plan your dinner! Cooking at home is a great way to save money. Do you have the ingredients to make cheese risotto?";
+    const stepDescription =
+      "Check your pantry, fridge, and freezer for the ingredients needed to make cheese risotto. You will need Arborio rice, onion, garlic, vegetable broth, white wine, butter, Parmesan cheese, and Gorgonzola cheese.";
+    const stepName = "Gather ingredients";
+    const goal = "Make cheese risotto for dinner";
+    const badResponseStringWithPlan =
+      `ai: ai: {text: "${text}", question: "", plan: {goal: "${goal}", steps: [{number: 1, action: {name: "${stepName}", description: "${stepDescription}"}}]}}`;
+    const seraRequest: SeraRequest = {
+      message: "Hello",
+    };
+    const chatPromise = new Promise<number>((resolve) => {
+      resolve(chat);
+    });
+    const createChatStub = stub(
+      _privilegedRequestHandlerInternals,
+      "createChat",
+      returnsNext([chatPromise]),
+    );
+    const modelStubWithCallForBadResponseWithPlan = sinon.createStubInstance(
+      ChatOpenAI,
+      {
+        call: new AIChatMessage(badResponseStringWithPlan),
+      },
+    );
+    const modelsContextStub: ModelsContext = {
+      chat: modelStubWithCallForBadResponseWithPlan,
+      embed: embedModelStubWithCall,
+    };
+
+    const seraResponse = await _privilegedRequestHandlerInternals.handleRequest(
+      modelsContextStub,
+      supabaseClientStub,
+      seraRequest,
+    );
+
+    const expectedResponse = {
+      text: text,
+      plan: {
+        goal: goal,
+        steps: [{
+          number: 1,
+          action: { name: stepName, description: stepDescription },
+        }],
+      },
+      question: "",
+      chat: chat,
+    };
+
+    assertStrictEquals(seraResponse.text, expectedResponse.text);
+    assertStrictEquals(
+      JSON.stringify(seraResponse.plan),
+      JSON.stringify(expectedResponse.plan),
+    );
+    assertEquals(seraResponse.chat, chat);
+
+    createChatStub.restore();
+  });
+  await t.step("handles responses without plan JSON", async () => {
+    const text = "Hello! How can I assist you today?";
+    const seraRequest: SeraRequest = {
+      message: "Hello",
+    };
+    const chatPromise = new Promise<number>((resolve) => {
+      resolve(chat);
+    });
+    const createChatStub = stub(
+      _privilegedRequestHandlerInternals,
+      "createChat",
+      returnsNext([chatPromise]),
+    );
+    const modelStubWithCallForResponseWithoutPlan = sinon.createStubInstance(
+      ChatOpenAI,
+      {
+        call: new AIChatMessage(text),
+      },
+    );
+    const modelsContextStub: ModelsContext = {
+      chat: modelStubWithCallForResponseWithoutPlan,
+      embed: embedModelStubWithCall,
+    };
+
+    const seraResponse = await _privilegedRequestHandlerInternals.handleRequest(
+      modelsContextStub,
+      supabaseClientStub,
+      seraRequest,
+    );
+
+    const expectedResponse = {
+      text: text,
+      chat: chat,
+    };
+
+    assertStrictEquals(seraResponse.text, expectedResponse.text);
+    assert(!Object.keys(seraResponse).includes("plan"));
+    assert(!Object.keys(seraResponse).includes("question"));
+    assertEquals(seraResponse.chat, chat);
+
+    createChatStub.restore();
+  });
+  await t.step(
+    "handles responses when a key word is followed by a colon but is not used as a JSON key",
+    async () => {
+      const responseWithTrickyKeys =
+        `"{\n    \"text\": \"To help you decide between stocks and bonds, here is a plan:\",\n    \"question\": \"Do you think you can follow these steps?\",\n    \"plan\": {\n        \"goal\": \"Choose between stocks and bonds\",\n        \"steps\": [\n            {\n                \"number\": 1,\n                \"action\": {\n                    \"name\": \"Research stocks and bonds\",\n                    \"description\": \"Spend some time researching the differences between stocks and bonds. Look at the historical performance of each and consider the level of risk you are comfortable with.\"\n                }\n            },\n            {\n                \"number\": 2,\n                \"action\": {\n                    \"name\": \"Determine your investment goals\",\n                    \"description\": \"Think about your investment goals and how they align with the potential risks and returns of stocks and bonds. Consider your time horizon, risk tolerance, and financial situation.\"\n                }\n            },\n            {\n                \"number\": 3,\n                \"action\": {\n                    \"name\": \"Consult with a financial advisor\",\n                    \"description\": \"Consider consulting with a financial advisor to get professional advice on which investment option is best for you. They can help you create a personalized investment plan based on your goals and risk tolerance.\"\n                }\n            }\n        ]\n    }\n}"`;
+      const seraRequest: SeraRequest = {
+        message: "Hello",
+      };
+      const chatPromise = new Promise<number>((resolve) => {
+        resolve(chat);
+      });
+      const createChatStub = stub(
+        _privilegedRequestHandlerInternals,
+        "createChat",
+        returnsNext([chatPromise]),
+      );
+      const modelStubWithCallForResponseWithTrickyKeys = sinon
+        .createStubInstance(
+          ChatOpenAI,
+          {
+            call: new AIChatMessage(responseWithTrickyKeys),
+          },
+        );
+      const modelsContextStub: ModelsContext = {
+        chat: modelStubWithCallForResponseWithTrickyKeys,
+        embed: embedModelStubWithCall,
+      };
+
+      const seraResponse = await _privilegedRequestHandlerInternals
+        .handleRequest(
+          modelsContextStub,
+          supabaseClientStub,
+          seraRequest,
+        );
+
+      assert(seraResponse.text);
+      assert(seraResponse.plan);
+      assert(seraResponse.chat);
+
+      createChatStub.restore();
+    },
+  );
 });
