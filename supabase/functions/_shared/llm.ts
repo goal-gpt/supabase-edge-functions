@@ -59,10 +59,10 @@ export function truncateDocuments(
 
 // _internals are used for testing
 export const _internals = {
-  truncateDocuments,
   getChatOpenAI,
   getEmbeddingsOpenAI,
   getEmbeddingString,
+  truncateDocuments,
   ChatOpenAI,
   OpenAIEmbeddings,
 };

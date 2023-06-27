@@ -88,7 +88,6 @@ async function generateEmbeddings(
     throw "Embedding already exists for this content";
   }
 
-  // OpenAI recommends replacing newlines with spaces for best results
   const { raw_content: rawContent } = contentData;
   const embeddingString = await getEmbeddingString(model, rawContent);
   console.log("Embedding:", embeddingString);
