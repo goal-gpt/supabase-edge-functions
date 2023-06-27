@@ -3,7 +3,7 @@ import {
   SeraResponse,
 } from "./privilegedRequestHandler.ts";
 import { _internals as _supabaseClientInternals } from "../_shared/supabaseClient.ts";
-import { _internals as _llmInternals } from "../_shared/llm.ts";
+import { _internals as _llmInternals, ModelsContext } from "../_shared/llm.ts";
 
 export interface SeraRequest {
   message: string;
@@ -14,16 +14,16 @@ export class Sera {
   // TODO: determine if this name is good
   async handleRequest(seraRequest: SeraRequest): Promise<SeraResponse> {
     console.log("Handling request:", seraRequest);
-    const model = _llmInternals.getChatOpenAI();
     const supabaseClient = _supabaseClientInternals.createClient();
+    const modelsContext: ModelsContext = {
+      chat: _llmInternals.getChatOpenAI(),
+      embed: _llmInternals.getEmbeddingsOpenAI(),
+    };
 
-    const seraResponse = await _privilegedRequestHandlerInternals
-      .handleRequest(
-        model,
-        supabaseClient,
-        seraRequest,
-      );
-
-    return seraResponse;
+    return await _privilegedRequestHandlerInternals.handleRequest(
+      modelsContext,
+      supabaseClient,
+      seraRequest,
+    );
   }
 }

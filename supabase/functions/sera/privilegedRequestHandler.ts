@@ -1,4 +1,3 @@
-import { ChatOpenAI } from "langchain/chat_models/openai";
 import {
   AIChatMessage,
   BaseChatMessage,
@@ -10,6 +9,14 @@ import { Database } from "../../types/supabase.ts";
 import { SeraRequest } from "./sera.ts";
 import { z, ZodTypeAny } from "zod";
 import { PromptTemplate } from "langchain/prompts";
+import {
+  getEmbeddingString,
+  ModelsContext,
+  truncateDocuments,
+} from "../_shared/llm.ts";
+import { MatchDocumentsResponse } from "../_shared/supabaseClient.ts";
+import { OpenAIEmbeddings } from "https://esm.sh/v126/langchain@0.0.85/embeddings/openai.js";
+import { getSimilarDocuments } from "../_shared/supabaseClient.ts";
 
 async function getAllChatLines(
   supabaseClient: SupabaseClient<Database>,
@@ -128,6 +135,9 @@ export interface SeraResponse extends BaseSeraResponse {
 export const premise =
   `You are an empathetic, emotionally-aware, and imaginative AI personal finance guide. ` +
   `You are very creative and open-minded when it comes to finding financial aspects to requests. ` +
+  `Make use of context_documents, delimited by ###, to add information and links into the answers you provide whenever possible. ` +
+  `Quotations from context_documents should be used to substantiate your claims as long as they are cited. ` +
+  `Here is an example citation: Individuals should establish a household budget to understand their cash flow (Source: [Household budgeting](https://www.bogleheads.org/wiki/Household_budgeting)). ` +
   `Your task is to make a plan for the user that helps them resolve their financial concerns or achieve their financial goals, ` +
   `based on the messages between you and the user, delimited by """. ` +
   `If you cannot determine the user's financial concerns or goals based on the messages, ` +
@@ -135,7 +145,7 @@ export const premise =
   `Unless you know otherwise, assume the user is also concerned ` +
   `with inflation, has very little savings, has very little experience budgeting, is open to ` +
   `new or additional jobs, and is open to online learning.` +
-  `The plan should be thorough, imaginative, and consist of small steps. ` +
+  `The plan should be thorough, imaginative, and consist of small steps. Add sources from context_documents where possible. ` +
   `The plan should not include steps the user has already taken. ` +
   `If you have already made a plan, use information in the messages to update the plan, including the numbering of the steps, if sensible. ` +
   `If you do not know the answer, explain that you do not know the answer. ` +
@@ -290,8 +300,24 @@ function convertToSeraResponse(response: string, chat: number): SeraResponse {
   return seraResponse;
 }
 
+async function embedAndGetSimilarDocuments(
+  model: OpenAIEmbeddings,
+  supabaseClient: SupabaseClient<Database>,
+  messages: BaseChatMessage[],
+): Promise<MatchDocumentsResponse> {
+  const lastMessages = messages.slice(-2).join(" ");
+  const embeddingString = await getEmbeddingString(model, lastMessages);
+  const documents = await getSimilarDocuments(
+    supabaseClient,
+    embeddingString,
+    0.78,
+    10,
+  );
+  return documents;
+}
+
 export async function handleRequest(
-  model: ChatOpenAI,
+  modelsContext: ModelsContext,
   supabaseClient: SupabaseClient<Database>,
   request: SeraRequest,
 ): Promise<SeraResponse> {
@@ -313,11 +339,20 @@ export async function handleRequest(
   messages.push(humanChatMessage);
   await _internals.createChatLine(supabaseClient, humanChatMessage, chat);
 
+  const rawDocuments = await embedAndGetSimilarDocuments(
+    modelsContext.embed,
+    supabaseClient,
+    messages,
+  );
+  const contextDocuments = truncateDocuments(rawDocuments);
+
+  // TODO: check the use of +++ here
   const prompt = new PromptTemplate({
     template:
-      '{premise}\n{format_instructions}\n+++\nMessages:\n"""\n{messages}\n"""',
+      '{premise}\n###{context_documents}###\n{format_instructions}\n+++\nMessages:\n"""\n{messages}\n"""',
     inputVariables: [
       "premise",
+      "context_documents",
       "format_instructions",
       "messages",
     ],
@@ -326,6 +361,7 @@ export async function handleRequest(
   const mappedMessages = messages.map((m) => m._getType() + ": " + m.text);
   const input = await prompt.format({
     premise: premise,
+    context_documents: contextDocuments,
     format_instructions: formatInstructions,
     messages: mappedMessages.join("\n"),
   });
@@ -334,7 +370,7 @@ export async function handleRequest(
   console.log("Calling OpenAI to get plan", planRequestMessage);
 
   // Calls OpenAI
-  const response = await model.call([planRequestMessage]);
+  const response = await modelsContext.chat.call([planRequestMessage]);
   const aiChatMessage = new AIChatMessage(response.text);
   const aiChatLine = await _internals.createChatLine(
     supabaseClient,

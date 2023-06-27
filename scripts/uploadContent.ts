@@ -51,9 +51,11 @@ async function sendRequests(
 
     if (!response.ok) {
       console.error(`Error sending request: ${response.statusText}`);
+    } else {
+      console.log(`Successfully added content: ${request.url}`);
     }
-    console.log(`Successfully added content: ${request.url}`);
   }
+  console.log("Finished sending requests");
 }
 
 async function processJsonFileAndSendRequests(

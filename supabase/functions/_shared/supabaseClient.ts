@@ -27,6 +27,8 @@ export interface InsertResponse {
   data?: null;
 }
 
+export type MatchDocumentsResponse =
+  Database["public"]["Functions"]["match_documents"]["Returns"];
 export type ContentRow = Database["public"]["Tables"]["content"]["Row"];
 export type DocumentRow = Database["public"]["Tables"]["document"]["Row"];
 
@@ -103,6 +105,29 @@ export async function saveEmbeddingToDatabase(
 
   console.log("Data inserted:", newDocumentData);
   return { data: newDocumentData };
+}
+
+export async function getSimilarDocuments(
+  supabaseClient: SupabaseClient<Database>,
+  queryEmbedding: string,
+  matchThreshold: number,
+  matchCount: number,
+): Promise<MatchDocumentsResponse> {
+  const { data: documents, error: documentsError } = await supabaseClient.rpc(
+    "match_documents",
+    {
+      query_embedding: queryEmbedding,
+      match_threshold: matchThreshold,
+      match_count: matchCount,
+    },
+  );
+
+  if (documentsError) {
+    console.error("Error fetching similar documents:", documentsError);
+    throw documentsError;
+  }
+
+  return documents;
 }
 
 // _internals are used for testing
