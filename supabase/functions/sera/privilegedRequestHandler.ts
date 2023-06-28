@@ -264,6 +264,12 @@ function convertToBaseSeraResponse(response: string): BaseSeraResponse {
     console.log("Potential JSON:", potentialJson);
 
     baseSeraResponse = JSON.parse(potentialJson);
+    const endOfTextIndex = baseSeraResponse.text.indexOf("\n");
+
+    if (endOfTextIndex !== -1) {
+      console.log("Removing trailing text from 'text' field");
+      baseSeraResponse.text = baseSeraResponse.text.slice(0, endOfTextIndex);
+    }
   }
 
   console.log("Converted to baseSeraResponse:", baseSeraResponse);
