@@ -17,7 +17,7 @@ const projectId = parsedUrl.hostname?.split(".")[0];
 const command =
   `npx supabase gen types typescript --project-id ${projectId} --schema public > supabase/types/supabase.ts`;
 
-exec(command, (error: any, stdout: any, stderr: any) => {
+exec(command, (error: unknown, stdout: unknown, stderr: unknown) => {
   if (error) {
     console.error(`exec error: ${error}`);
     return;

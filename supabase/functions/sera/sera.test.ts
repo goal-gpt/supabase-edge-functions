@@ -30,6 +30,7 @@ Deno.test("sera", async (t) => {
         _llmInternals,
         "getEmbeddingsOpenAI",
       );
+      const getSplitterStub = stub(_llmInternals, "getTextSplitter");
       const handleRequestStub = stub(
         _privilegedRequestHandlerInternals,
         "handleRequest",
@@ -41,6 +42,7 @@ Deno.test("sera", async (t) => {
       assertSpyCalls(createClientStub, 1);
       assertSpyCalls(getChatOpenAIStub, 1);
       assertSpyCalls(handleRequestStub, 1);
+      assertSpyCalls(getSplitterStub, 1);
       assertSpyCalls(getEmbeddingsOpenAIStub, 1);
       assert(seraResponse.text === seraResponseMock.text);
       assert(seraResponse.chat === seraResponseMock.chat);

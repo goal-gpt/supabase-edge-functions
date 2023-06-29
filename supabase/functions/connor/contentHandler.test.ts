@@ -11,6 +11,9 @@ import {
 } from "../_shared/supabaseClient.ts";
 import { _internals as _llmInternals } from "../_shared/llm.ts";
 import { _internals as _contentInternals } from "./contentHandler.ts";
+import { ChatOpenAI } from "langchain/chat_models/openai";
+import { OpenAIEmbeddings } from "langchain/embeddings/openai";
+import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
 import { SupabaseClient } from "@supabase/supabase-js";
 import * as sinonImport from "sinon";
 import { ConnorRequest } from "./connor.ts";
@@ -124,57 +127,84 @@ Deno.test("scrapeAndSaveLink function", async (t) => {
   });
 });
 
-Deno.test("generateEmbeddings function", async () => {
+Deno.test("fetchAndSaveContentChunks function", async () => {
   const contentId = 1;
   const raw_content = "Test Content";
   const embeddingVector = [1, 2, 3];
   const embeddingString = JSON.stringify(embeddingVector);
-  const supabaseClientStub = sinon.createStubInstance(SupabaseClient);
-  const modelStub = sinon.createStubInstance(_llmInternals.OpenAIEmbeddings);
+  const embedModelStubWithCall = sinon.createStubInstance(OpenAIEmbeddings);
+  embedModelStubWithCall.embedQuery.returns(Promise.resolve(embeddingVector));
+  const chatModelStubWithCall = sinon.createStubInstance(ChatOpenAI);
+  const splitterStub = sinon.createStubInstance(
+    RecursiveCharacterTextSplitter,
+    {
+      createDocuments: Promise.resolve([{ pageContent: "Test" }, {
+        pageContent: "Content",
+      }]),
+    },
+  );
+  const modelsContextStub = {
+    chat: chatModelStubWithCall,
+    embed: embedModelStubWithCall,
+    splitter: splitterStub,
+  };
   const fromStub = sinon.stub();
   const selectStub = sinon.stub();
   const insertStub = sinon.stub();
   const equalStub = sinon.stub();
   const singleStub = sinon.stub();
-
-  modelStub.embedQuery.returns(Promise.resolve(embeddingVector));
+  const supabaseClientStub = sinon.createStubInstance(SupabaseClient);
   supabaseClientStub.from = fromStub;
-  fromStub.onFirstCall().returns({ select: selectStub });
-  fromStub.onSecondCall().returns({ select: selectStub });
-  fromStub.onThirdCall().returns({ insert: insertStub });
+  fromStub.onCall(0).returns({ select: selectStub });
+  fromStub.onCall(1).returns({ select: selectStub });
+  fromStub.onCall(2).returns({ insert: insertStub });
+  fromStub.onCall(3).returns({ insert: insertStub });
   selectStub.returns({ eq: equalStub });
   equalStub.returns({ single: singleStub });
   singleStub.onCall(0).resolves({ data: { raw_content }, error: null });
   singleStub.onCall(1).resolves({ data: null });
   insertStub.resolves({ data: null, error: null });
 
-  const response = await _contentInternals.generateEmbeddings(
+  const response = await _contentInternals.fetchAndSaveContentChunks(
     supabaseClientStub,
-    modelStub,
+    modelsContextStub,
     contentId,
   );
 
-  sinon.assert.calledOnce(modelStub.embedQuery);
-  sinon.assert.calledWith(modelStub.embedQuery, raw_content);
-  sinon.assert.calledThrice(supabaseClientStub.from);
+  sinon.assert.calledTwice(embedModelStubWithCall.embedQuery);
+  sinon.assert.calledWith(embedModelStubWithCall.embedQuery.firstCall, "Test");
+  sinon.assert.calledWith(
+    embedModelStubWithCall.embedQuery.secondCall,
+    "Content",
+  );
+  assertEquals(supabaseClientStub.from.callCount, 4);
   sinon.assert.calledWith(supabaseClientStub.from.firstCall, "content");
   sinon.assert.calledWith(supabaseClientStub.from.secondCall, "document");
   sinon.assert.calledTwice(selectStub);
   sinon.assert.calledWith(selectStub.firstCall, "raw_content");
   sinon.assert.calledWith(selectStub.secondCall, "*");
   sinon.assert.calledTwice(equalStub);
-  sinon.assert.calledTwice(singleStub);
+  sinon.assert.calledOnce(singleStub);
   sinon.assert.calledWith(equalStub.firstCall, "id", contentId);
   sinon.assert.calledWith(equalStub.secondCall, "content", contentId);
-  sinon.assert.calledOnce(insertStub);
-  sinon.assert.calledWith(insertStub, [
+  sinon.assert.calledTwice(insertStub);
+  console.log("huh!");
+  console.log(insertStub);
+  sinon.assert.calledWith(insertStub.firstCall, [
     {
       content: contentId,
       embedding: embeddingString,
-      raw_content: raw_content,
+      raw_content: "Test",
     },
   ]);
-  assertEquals(response, { data: null });
+  sinon.assert.calledWith(insertStub.secondCall, [
+    {
+      content: contentId,
+      embedding: embeddingString,
+      raw_content: "Content",
+    },
+  ]);
+  assertEquals(response, 2);
 
   sinon.restore();
 });

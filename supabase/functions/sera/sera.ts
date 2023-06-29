@@ -18,6 +18,7 @@ export class Sera {
     const modelsContext: ModelsContext = {
       chat: _llmInternals.getChatOpenAI(),
       embed: _llmInternals.getEmbeddingsOpenAI(),
+      splitter: _llmInternals.getTextSplitter(),
     };
 
     return await _privilegedRequestHandlerInternals.handleRequest(

@@ -71,14 +71,13 @@ export async function fetchContentData(
 export async function fetchDocumentData(
   supabaseClient: SupabaseClient<Database>,
   contentId: number,
-): Promise<DocumentRow | null> {
+): Promise<DocumentRow[] | null> {
   const { data: documentData } = await supabaseClient
     .from("document")
     .select("*")
-    .eq("content", contentId)
-    .single();
+    .eq("content", contentId);
 
-  return documentData || null;
+  return documentData;
 }
 
 export async function saveEmbeddingToDatabase(
@@ -87,6 +86,7 @@ export async function saveEmbeddingToDatabase(
   rawContent: string,
   embeddingString: string,
 ): Promise<InsertResponse> {
+  console.log("rawContent:", rawContent);
   const { data: newDocumentData, error: newDocumentError } =
     await supabaseClient
       .from("document")
