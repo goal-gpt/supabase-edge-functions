@@ -36,7 +36,6 @@ async function sendRequests(
     "authorization": `Bearer ${token}`,
     "content-type": "application/json",
   };
-  // TODO: fix this as it doesn't seem to load from env
   const url = (process.env.SUPABASE_FUNCTIONS_URL ?? "") + "/connor";
 
   for (const request of requests) {
