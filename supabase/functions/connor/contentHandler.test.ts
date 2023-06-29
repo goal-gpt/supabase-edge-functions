@@ -138,8 +138,12 @@ Deno.test("fetchAndSaveContentChunks function", async () => {
   const splitterStub = sinon.createStubInstance(
     RecursiveCharacterTextSplitter,
     {
-      createDocuments: Promise.resolve([{ pageContent: "Test" }, {
+      createDocuments: Promise.resolve([{
+        pageContent: "Test",
+        metadata: { loc: { lines: { from: 1, to: 2 } } },
+      }, {
         pageContent: "Content",
+        metadata: { loc: { lines: { from: 2, to: 3 } } },
       }]),
     },
   );
@@ -195,6 +199,8 @@ Deno.test("fetchAndSaveContentChunks function", async () => {
       content: contentId,
       embedding: embeddingString,
       raw_content: "Test",
+      start_line: 1,
+      end_line: 2,
     },
   ]);
   sinon.assert.calledWith(insertStub.secondCall, [
@@ -202,6 +208,8 @@ Deno.test("fetchAndSaveContentChunks function", async () => {
       content: contentId,
       embedding: embeddingString,
       raw_content: "Content",
+      start_line: 2,
+      end_line: 3,
     },
   ]);
   assertEquals(response, 2);

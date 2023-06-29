@@ -29,8 +29,8 @@ export function getEmbeddingsOpenAI(): OpenAIEmbeddings {
 }
 
 export function getTextSplitter(
-  chunkSize = 256,
-  chunkOverlap = 50, // Recommended 20% overlap
+  chunkSize = 512,
+  chunkOverlap = 100, // Recommended 20% overlap
 ): RecursiveCharacterTextSplitter {
   return new RecursiveCharacterTextSplitter({
     chunkSize: chunkSize,

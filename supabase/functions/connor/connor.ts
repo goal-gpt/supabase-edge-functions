@@ -13,7 +13,7 @@ export interface ConnorRequest {
 }
 
 export class Connor {
-  async handleRequest(connorRequest: ConnorRequest): Promise<void> {
+  async handleRequest(connorRequest: ConnorRequest): Promise<number> {
     console.log("Handling request:", connorRequest);
     const supabaseClient = _supabaseClientInternals.createClient();
     const modelsContext: ModelsContext = {

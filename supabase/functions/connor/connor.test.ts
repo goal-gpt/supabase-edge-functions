@@ -26,7 +26,7 @@ Deno.test("contentHandler", async (t) => {
       const handlerStub = stub(
         _contentInternals,
         "handleRequest",
-        returnsNext([Promise.resolve()]),
+        returnsNext([Promise.resolve(1)]),
       );
 
       await new Connor().handleRequest(requestMock);

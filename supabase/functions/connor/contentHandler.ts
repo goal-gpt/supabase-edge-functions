@@ -19,7 +19,7 @@ async function handleRequest(
   modelsContext: ModelsContext,
   supabaseClient: SupabaseClient<Database>,
   contentRequest: ConnorRequest,
-) {
+): Promise<number> {
   try {
     const { data } = await scrapeAndSaveLink(supabaseClient, contentRequest);
     console.log("Content saved: ", data);
@@ -30,6 +30,7 @@ async function handleRequest(
       data[0]?.id,
     );
     console.log(`${result} embeddings saved`);
+    return result;
   } catch (error) {
     console.error("Error saving content:", error);
     throw error;
@@ -119,7 +120,7 @@ async function saveContentChunks(
       const { error } = await saveEmbeddingToDatabase(
         supabaseClient,
         contentId,
-        pageContent,
+        chunk,
         embeddingString,
       );
 

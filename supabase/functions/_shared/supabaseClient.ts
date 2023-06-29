@@ -3,6 +3,7 @@ import {
   PostgrestError,
   SupabaseClient,
 } from "@supabase/supabase-js";
+import { Document } from "./llm.ts";
 import { Database } from "../../types/supabase.ts";
 
 export function createClient() {
@@ -83,10 +84,13 @@ export async function fetchDocumentData(
 export async function saveEmbeddingToDatabase(
   supabaseClient: SupabaseClient<Database>,
   contentId: number,
-  rawContent: string,
+  document: Document,
   embeddingString: string,
 ): Promise<InsertResponse> {
-  console.log("rawContent:", rawContent);
+  const { metadata } = document;
+  const { loc } = metadata;
+  const { lines } = loc;
+  const { from, to } = lines;
   const { data: newDocumentData, error: newDocumentError } =
     await supabaseClient
       .from("document")
@@ -94,7 +98,9 @@ export async function saveEmbeddingToDatabase(
         {
           content: contentId,
           embedding: embeddingString,
-          raw_content: rawContent,
+          raw_content: document.pageContent,
+          start_line: from,
+          end_line: to,
         },
       ]);
 

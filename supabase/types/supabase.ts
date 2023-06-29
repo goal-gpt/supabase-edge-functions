@@ -116,33 +116,33 @@ export interface Database {
       }
       document: {
         Row: {
-          content: number | null
+          content: number
           embedding: string | null
-          end_token: number | null
+          end_line: number | null
           id: number
           inserted_at: string
           raw_content: string
-          start_token: number | null
+          start_line: number | null
           updated_at: string
         }
         Insert: {
-          content?: number | null
+          content: number
           embedding?: string | null
-          end_token?: number | null
+          end_line?: number | null
           id?: number
           inserted_at?: string
           raw_content: string
-          start_token?: number | null
+          start_line?: number | null
           updated_at?: string
         }
         Update: {
-          content?: number | null
+          content?: number
           embedding?: string | null
-          end_token?: number | null
+          end_line?: number | null
           id?: number
           inserted_at?: string
           raw_content?: string
-          start_token?: number | null
+          start_line?: number | null
           updated_at?: string
         }
         Relationships: [
