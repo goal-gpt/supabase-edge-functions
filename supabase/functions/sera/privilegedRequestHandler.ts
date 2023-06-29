@@ -311,7 +311,7 @@ async function embedAndGetSimilarDocuments(
   supabaseClient: SupabaseClient<Database>,
   messages: BaseChatMessage[],
 ): Promise<MatchDocumentsResponse> {
-  const lastMessages = messages.slice(-2).join(" ");
+  const lastMessages = messages.slice(-2).map((v) => v.text).join(" ");
   const embeddingString = await getEmbeddingString(model, lastMessages);
   const documents = await getSimilarDocuments(
     supabaseClient,
