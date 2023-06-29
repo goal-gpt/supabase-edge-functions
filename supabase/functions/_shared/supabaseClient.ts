@@ -87,10 +87,7 @@ export async function saveEmbeddingToDatabase(
   document: Document,
   embeddingString: string,
 ): Promise<InsertResponse> {
-  const { metadata } = document;
-  const { loc } = metadata;
-  const { lines } = loc;
-  const { from, to } = lines;
+  const { from, to } = document.metadata.loc.lines;
   const { data: newDocumentData, error: newDocumentError } =
     await supabaseClient
       .from("document")
