@@ -1,11 +1,14 @@
 import { ChatOpenAI } from "langchain/chat_models/openai";
 import { OpenAIEmbeddings } from "langchain/embeddings/openai";
+import { Document } from "langchain/document";
+import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
 import GPT3Tokenizer from "tokenizer";
 import { MatchDocumentsResponse } from "./supabaseClient.ts";
 
 export interface ModelsContext {
   chat: ChatOpenAI;
   embed: OpenAIEmbeddings;
+  splitter: RecursiveCharacterTextSplitter;
 }
 
 export function getChatOpenAI(): ChatOpenAI {
@@ -22,6 +25,16 @@ export function getEmbeddingsOpenAI(): OpenAIEmbeddings {
     openAIApiKey: Deno.env.get("OPENAI_API_KEY"),
     modelName: "text-embedding-ada-002",
     verbose: true,
+  });
+}
+
+export function getTextSplitter(
+  chunkSize = 512,
+  chunkOverlap = 100, // Recommended 20% overlap
+): RecursiveCharacterTextSplitter {
+  return new RecursiveCharacterTextSplitter({
+    chunkSize: chunkSize,
+    chunkOverlap: chunkOverlap,
   });
 }
 
@@ -57,12 +70,27 @@ export function truncateDocuments(
   return text;
 }
 
+export async function getChunkedDocuments(
+  model: RecursiveCharacterTextSplitter,
+  text: string,
+): Promise<Document[]> {
+  return await model.createDocuments([text]);
+}
+
 // _internals are used for testing
 export const _internals = {
+  getChunkedDocuments,
   getChatOpenAI,
   getEmbeddingsOpenAI,
   getEmbeddingString,
+  getTextSplitter,
   truncateDocuments,
+};
+
+// Re-export types for convenience
+export type {
   ChatOpenAI,
+  Document,
   OpenAIEmbeddings,
+  RecursiveCharacterTextSplitter,
 };

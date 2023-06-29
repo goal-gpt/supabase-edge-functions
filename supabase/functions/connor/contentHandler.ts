@@ -1,32 +1,36 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "../../types/supabase.ts";
 
-import { OpenAIEmbeddings } from "langchain/embeddings/openai";
 import { ConnorRequest } from "./connor.ts";
 import {
   ContentRow,
   fetchContentData,
   fetchDocumentData,
-  InsertResponse,
   saveContentToDatabase,
   saveEmbeddingToDatabase,
 } from "../_shared/supabaseClient.ts";
-import { getEmbeddingString } from "../_shared/llm.ts";
+import {
+  getChunkedDocuments,
+  getEmbeddingString,
+  ModelsContext,
+} from "../_shared/llm.ts";
 
 async function handleRequest(
-  model: OpenAIEmbeddings,
+  modelsContext: ModelsContext,
   supabaseClient: SupabaseClient<Database>,
   contentRequest: ConnorRequest,
-): Promise<InsertResponse> {
+): Promise<number> {
   try {
     const { data } = await scrapeAndSaveLink(supabaseClient, contentRequest);
     console.log("Content saved: ", data);
 
-    return await generateEmbeddings(
+    const result = await fetchAndSaveContentChunks(
       supabaseClient,
-      model,
+      modelsContext,
       data[0]?.id,
     );
+    console.log(`${result} embeddings saved`);
+    return result;
   } catch (error) {
     console.error("Error saving content:", error);
     throw error;
@@ -69,11 +73,11 @@ function extractTitleFromHtml(html: string): string {
   return titleMatch ? titleMatch[1] : "";
 }
 
-async function generateEmbeddings(
+async function fetchAndSaveContentChunks(
   supabaseClient: SupabaseClient<Database>,
-  model: OpenAIEmbeddings,
+  modelsContext: ModelsContext,
   contentId: number,
-): Promise<InsertResponse> {
+): Promise<number> {
   console.log("Generating embeddings");
   const contentData = await fetchContentData(supabaseClient, contentId);
 
@@ -83,26 +87,57 @@ async function generateEmbeddings(
   }
 
   const documentData = await fetchDocumentData(supabaseClient, contentId);
-  if (documentData) {
-    console.log("Embedding already exists for this content:", contentId);
+  if (documentData && documentData.length > 0) {
+    console.log("Embeddings already exist for this content:", contentId);
     throw "Embedding already exists for this content";
   }
 
   const { raw_content: rawContent } = contentData;
-  const embeddingString = await getEmbeddingString(model, rawContent);
-  console.log("Embedding:", embeddingString);
-
-  return await saveEmbeddingToDatabase(
+  return await saveContentChunks(
     supabaseClient,
+    modelsContext,
     contentId,
     rawContent,
-    embeddingString,
   );
+}
+
+async function saveContentChunks(
+  supabaseClient: SupabaseClient<Database>,
+  modelsContext: ModelsContext,
+  contentId: number,
+  rawContent: string,
+): Promise<number> {
+  const chunks = await getChunkedDocuments(modelsContext.splitter, rawContent);
+  let successfulCount = 0;
+
+  for (const chunk of chunks) {
+    try {
+      const { pageContent } = chunk;
+      const embeddingString = await getEmbeddingString(
+        modelsContext.embed,
+        pageContent,
+      );
+      const { error } = await saveEmbeddingToDatabase(
+        supabaseClient,
+        contentId,
+        chunk,
+        embeddingString,
+      );
+
+      if (error) throw error;
+      successfulCount += 1;
+    } catch (error) {
+      console.error("Error saving chunked embedding: ", error);
+      throw error;
+    }
+  }
+
+  return successfulCount;
 }
 
 // _internals are used for testing
 export const _internals = {
   handleRequest,
   scrapeAndSaveLink,
-  generateEmbeddings,
+  fetchAndSaveContentChunks,
 };

@@ -9,6 +9,7 @@ import { SeraRequest } from "./sera.ts";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { ChatOpenAI } from "langchain/chat_models/openai";
 import { OpenAIEmbeddings } from "langchain/embeddings/openai";
+import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
 import * as sinon from "sinon";
 import {
   assert,
@@ -83,9 +84,13 @@ Deno.test("handleRequest", async (t) => {
       }),
     },
   );
+  const splitterStub = sinon.createStubInstance(
+    RecursiveCharacterTextSplitter,
+  );
   const modelsContextStub: ModelsContext = {
     chat: chatModelStubWithCall,
     embed: embedModelStubWithCall,
+    splitter: splitterStub,
   };
 
   await t.step("without a chat", async (t) => {
@@ -205,9 +210,13 @@ Deno.test("handleRequest", async (t) => {
         call: new AIChatMessage(badResponseStringWithPlan),
       },
     );
+    const splitterStub = sinon.createStubInstance(
+      RecursiveCharacterTextSplitter,
+    );
     const modelsContextStub: ModelsContext = {
       chat: modelStubWithCallForBadResponseWithPlan,
       embed: embedModelStubWithCall,
+      splitter: splitterStub,
     };
 
     const seraResponse = await _privilegedRequestHandlerInternals.handleRequest(
@@ -257,9 +266,13 @@ Deno.test("handleRequest", async (t) => {
         call: new AIChatMessage(text),
       },
     );
+    const splitterStub = sinon.createStubInstance(
+      RecursiveCharacterTextSplitter,
+    );
     const modelsContextStub: ModelsContext = {
       chat: modelStubWithCallForResponseWithoutPlan,
       embed: embedModelStubWithCall,
+      splitter: splitterStub,
     };
 
     const seraResponse = await _privilegedRequestHandlerInternals.handleRequest(
@@ -303,9 +316,13 @@ Deno.test("handleRequest", async (t) => {
             call: new AIChatMessage(responseWithTrickyKeys),
           },
         );
+      const splitterStub = sinon.createStubInstance(
+        RecursiveCharacterTextSplitter,
+      );
       const modelsContextStub: ModelsContext = {
         chat: modelStubWithCallForResponseWithTrickyKeys,
         embed: embedModelStubWithCall,
+        splitter: splitterStub,
       };
 
       const seraResponse = await _privilegedRequestHandlerInternals

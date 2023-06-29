@@ -1,8 +1,7 @@
 import {
   _internals as _supabaseClientInternals,
-  InsertResponse,
 } from "../_shared/supabaseClient.ts";
-import { _internals as _llmInternals } from "../_shared/llm.ts";
+import { _internals as _llmInternals, ModelsContext } from "../_shared/llm.ts";
 import { _internals as _contentHandlerInternals } from "./contentHandler.ts";
 
 export interface ConnorRequest {
@@ -14,13 +13,17 @@ export interface ConnorRequest {
 }
 
 export class Connor {
-  async handleRequest(connorRequest: ConnorRequest): Promise<InsertResponse> {
+  async handleRequest(connorRequest: ConnorRequest): Promise<number> {
     console.log("Handling request:", connorRequest);
     const supabaseClient = _supabaseClientInternals.createClient();
-    const model = _llmInternals.getEmbeddingsOpenAI();
+    const modelsContext: ModelsContext = {
+      chat: _llmInternals.getChatOpenAI(),
+      embed: _llmInternals.getEmbeddingsOpenAI(),
+      splitter: _llmInternals.getTextSplitter(),
+    };
 
     return await _contentHandlerInternals.handleRequest(
-      model,
+      modelsContext,
       supabaseClient,
       connorRequest,
     );

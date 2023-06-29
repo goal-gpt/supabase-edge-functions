@@ -1,5 +1,8 @@
+const fs = require("fs");
+const util = require("util");
 const dotenv = require("dotenv"); // eslint-disable-line
 dotenv.config();
+const readFile = util.promisify(fs.readFile);
 
 // Copied over to simplify scripts
 interface CardItemData {
@@ -36,7 +39,6 @@ async function sendRequests(
     "authorization": `Bearer ${token}`,
     "content-type": "application/json",
   };
-  // TODO: fix this as it doesn't seem to load from env
   const url = (process.env.SUPABASE_FUNCTIONS_URL ?? "") + "/connor";
 
   for (const request of requests) {
@@ -61,8 +63,12 @@ async function sendRequests(
 async function processJsonFileAndSendRequests(
   userId: string,
   token: string,
+  filepath: string,
 ): Promise<void> {
-  const requests: ConnorRequest[] = cardItemData.map((item: CardItemData) => ({
+  const rawData = await readFile(filepath, "utf-8");
+  const processedData = JSON.parse(rawData);
+
+  const requests: ConnorRequest[] = processedData.map((item: CardItemData) => ({
     url: item.link,
     userId: userId,
     rawContent: item.testedContent,
@@ -74,15 +80,17 @@ async function processJsonFileAndSendRequests(
 }
 
 // Check that we have the right number of command line arguments.
-if (process.argv.length < 4) {
-  console.error("Usage: node ./scripts/upload_content.ts <userId> <token>");
+if (process.argv.length < 5) {
+  console.error(
+    "Usage: node ./scripts/upload_content.ts <userId> <token> <filepath>",
+  );
   process.exit(1);
 }
 
 const userId = process.argv[2];
-
 const token = process.argv[3];
+const filepath = process.argv[4];
 
-processJsonFileAndSendRequests(userId, token).catch(
+processJsonFileAndSendRequests(userId, token, filepath).catch(
   console.error,
 );

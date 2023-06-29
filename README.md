@@ -64,7 +64,7 @@ The values for `SUPABASE_ACCESS_TOKEN` and `SUPABASE_PROJECT_ID` are available/c
 `SUPABASE_ENV_FILE` consists of the environment variables needed to run the edge functions that are not the [default secrets](https://supabase.com/docs/guides/functions/secrets#default-secrets). During the GitHub Action, the value of this secret is echoed into a `.env` file which is then passed to Supabase. This step is taken because the secrets set in the Supabase Vault do not appear to be available to edge functions. If the environment variables used by the functions changes, the `SUPABASE_ENV_FILE` secret should be updated at GitHub.
 
 ## Local DB setup
-To replicate the remote DB locally, run the following commands:
+To replicate the remote DB locally for the first time, run the following commands:
 
 ```bash
 supabase link --project-ref <PROJECT_ID>
@@ -78,3 +78,9 @@ To verify you are using the latest migration, run the following command:
 ```bash
 supabase db diff
 ```
+
+## Updating the DB schema
+When the DB is connected, it is now possible to make changes via the Supabase dashboard and create migrations in `supabase/migrations/*`. Follow these steps:
+- Make a change to the Supabase DB via the dashboard
+- Run `supabase db diff -f <new-migration-filename> --linked`
+- Run `supabase db reset` to apply the migrations locally
