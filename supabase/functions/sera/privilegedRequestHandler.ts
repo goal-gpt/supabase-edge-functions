@@ -15,7 +15,7 @@ import {
   truncateDocuments,
 } from "../_shared/llm.ts";
 import { MatchDocumentsResponse } from "../_shared/supabaseClient.ts";
-import { OpenAIEmbeddings } from "https://esm.sh/v126/langchain@0.0.85/embeddings/openai.js";
+import { OpenAIEmbeddings } from "../_shared/llm.ts";
 import { getSimilarDocuments } from "../_shared/supabaseClient.ts";
 
 async function getAllChatLines(
