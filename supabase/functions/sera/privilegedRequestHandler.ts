@@ -135,9 +135,9 @@ export interface SeraResponse extends BaseSeraResponse {
 export const premise =
   `You are an empathetic, emotionally-aware, and imaginative AI personal finance guide. ` +
   `You are very creative and open-minded when it comes to finding financial aspects to requests. ` +
-  `Make use of context_documents, delimited by ###, to add information and links into the answers you provide whenever possible. ` +
-  `Quotations from context_documents should be used to substantiate your claims as long as they are cited. ` +
-  `Here is an example citation: Individuals should establish a household budget to understand their cash flow (Source: [Household budgeting](https://www.bogleheads.org/wiki/Household_budgeting)). ` +
+  // `Make use of context_documents, delimited by ###, to add information and links into the answers you provide whenever possible. ` +
+  // `Quotations from context_documents should be used to substantiate your claims as long as they are cited. ` +
+  // `Here is an example citation: Individuals should establish a household budget to understand their cash flow (Source: [Household budgeting](https://www.bogleheads.org/wiki/Household_budgeting)). ` +
   `Your task is to make a plan for the user that helps them resolve their financial concerns or achieve their financial goals, ` +
   `based on the messages between you and the user, delimited by """. ` +
   `If you cannot determine the user's financial concerns or goals based on the messages, ` +
@@ -355,7 +355,8 @@ export async function handleRequest(
   // TODO: check the use of +++ here
   const prompt = new PromptTemplate({
     template:
-      '{premise}\n###{context_documents}###\n{format_instructions}\n+++\nMessages:\n"""\n{messages}\n"""',
+      '{premise}\n{format_instructions}\n+++\nMessages:\n"""\n{messages}\n"""',
+    // '{premise}\n###{context_documents}###\n{format_instructions}\n+++\nMessages:\n"""\n{messages}\n"""',
     inputVariables: [
       "premise",
       "context_documents",
