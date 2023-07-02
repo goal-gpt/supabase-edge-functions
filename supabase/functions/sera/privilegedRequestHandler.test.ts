@@ -15,44 +15,15 @@ import {
   assert,
   assertEquals,
   assertStrictEquals,
+  assertStringIncludes,
   // assertStringIncludes,
 } from "testing/asserts.ts";
-import {
-  AIChatMessage,
-  BaseChatMessage,
-  SystemChatMessage,
-} from "langchain/schema";
+import { BaseChatMessage, SystemChatMessage } from "langchain/schema";
 
 // TODO: Determine how to make tests DRY-er
 Deno.test("handleRequest", async (t) => {
   const chat = 1;
   const chatLine = 1;
-  const modelResponsePreamble =
-    "I suggest starting by creating a budget to determine how much money you can allocate towards job searching. " +
-    "Then, research companies and job openings that match your skills and interests. You can use job search websites " +
-    "like Indeed or LinkedIn to find job postings. Additionally, consider reaching out to your network and attending " +
-    "job fairs to expand your opportunities. Once you have identified potential job openings, tailor your resume and " +
-    "cover letter to each position to increase your chances of getting hired. Finally, prepare for interviews by " +
-    "researching the company and practicing common interview questions. Good luck with your job search! ";
-  const modelResponseJsonString = "\n\n{\n    " +
-    '"text": "I suggest starting by creating a budget to determine how much money you can allocate towards job searching. ' +
-    "Then, research companies and job openings that match your skills and interests. You can use job search websites like " +
-    "Indeed or LinkedIn to find job postings. Additionally, consider reaching out to your network and attending job fairs " +
-    "to expand your opportunities. Once you have identified potential job openings, tailor your resume and cover letter " +
-    "to each position to increase your chances of getting hired. Finally, prepare for interviews by researching the company " +
-    'and practicing common interview questions. Good luck with your job search!",\n    "question": "Do you think this plan ' +
-    'will help you find a job that matches your skills and interests? Are you able to follow these steps?",\n    "plan": ' +
-    '{\n        "goal": "Find job openings that match your skills and interests and prepare for interviews.",\n        ' +
-    '"steps": [\n            {\n                "number": 1,\n                "action": "Create a budget to determine how ' +
-    'much money you can allocate towards job searching."\n            },\n            {\n                "number": 2,\n                ' +
-    '"action": "Research companies and job openings that match your skills and interests using job search websites like ' +
-    'Indeed or LinkedIn."\n            },\n            {\n                "number": 3,\n                "action": ' +
-    '"Consider reaching out to your network and attending job fairs to expand your opportunities."\n            },\n            ' +
-    '{\n                "number": 4,\n                "action": "Tailor your resume and cover letter to each position ' +
-    'to increase your chances of getting hired."\n            },\n            {\n                "number": 5,' +
-    '\n                "action": "Prepare for interviews by researching the company and practicing common ' +
-    'interview questions."\n            }\n        ]\n    }\n}';
-  const modelResponseJson = JSON.parse(modelResponseJsonString);
   const rawContent = "Test content";
   const title = "Test Title";
   const link = "https://example.com";
@@ -65,16 +36,23 @@ Deno.test("handleRequest", async (t) => {
     }],
   });
   const embedding = "embedding";
+  const modelResponseString =
+    `{\n  "summary": "To plan a wedding, you need to set a budget, create a guest list, choose a venue, select vendors, and plan the details.",\n  "goal": "Plan a wedding",\n  "steps": [\n    {\n      "number": 1,\n      "action": {\n        "name": "Set a budget",\n        "description": "Determine how much you can afford to spend on your wedding.",\n        "ideas": {\n          "mostObvious": "Calculate your total budget by considering your savings, contributions from family, and any loans you may need.",\n          "leastObvious": "Consider using a wedding budget calculator to help you allocate funds to different aspects of your wedding.",\n          "inventiveOrImaginative": "Explore creative ways to save money on your wedding, such as DIY decorations or opting for a non-traditional venue.",\n          "rewardingOrSustainable": "By setting a budget, you can ensure that you don\'t overspend and start your married life on a solid financial foundation."\n        }\n      }\n    },\n    {\n      "number": 2,\n      "action": {\n        "name": "Create a guest list",\n        "description": "Decide who you want to invite to your wedding.",\n        "ideas": {\n          "mostObvious": "Start by listing close family members and friends, and then consider extended family, colleagues, and acquaintances.",\n          "leastObvious": "Consider the size of your venue and your budget when finalizing your guest list.",\n          "inventiveOrImaginative": "If you have a large guest list but a limited budget, consider having a smaller, intimate ceremony and a larger reception.",\n          "rewardingOrSustainable": "Creating a guest list helps you estimate the number of guests and plan other aspects of your wedding, such as catering and seating arrangements."\n        }\n      }\n    } ]\n}`;
   const supabaseClientStub = sinon.createStubInstance(SupabaseClient, {
     rpc: rpcStub,
   });
-  const AIChatMessageStub = sinon.stub().returns(
-    new AIChatMessage(
-      `${modelResponsePreamble}${modelResponseJsonString}`,
-    ),
-  );
+  const AIFunctionsStub = {
+    additional_kwargs: {
+      function_call: {
+        name: "test_function",
+        arguments: modelResponseString,
+      },
+    },
+  };
   const chatModelStubWithCall = sinon.createStubInstance(ChatOpenAI, {
-    call: AIChatMessageStub,
+    predictMessages: new Promise((resolve) => {
+      resolve(AIFunctionsStub);
+    }),
   });
   const embedModelStubWithCall = sinon.createStubInstance(
     OpenAIEmbeddings,
@@ -129,18 +107,23 @@ Deno.test("handleRequest", async (t) => {
 
       assertSpyCalls(createChatStub, 1);
       assertSpyCalls(createChatLineStub, 2);
-      assertStrictEquals(seraResponse.text, modelResponseJson.text);
-      assertStrictEquals(
-        JSON.stringify(seraResponse.plan),
-        JSON.stringify(modelResponseJson.plan),
-      );
       assertEquals(seraResponse.chat, chat);
-
-      sinon.assert.calledOnce(AIChatMessageStub);
-      // assertStringIncludes(
-      //   AIChatMessageStub.getCall(0).args[0][0]["text"],
-      //   `[${title}](${link}) - ${rawContent}`,
-      // );
+      assertStringIncludes(seraResponse.text, "To plan a wedding");
+      assertEquals(seraResponse.plan!.goal, "Plan a wedding");
+      assertEquals(seraResponse.plan!.steps.length, 2);
+      assertEquals(seraResponse.plan!.steps[0].number, 1);
+      assertEquals(
+        seraResponse.plan!.steps[0].action.name,
+        "Set a budget",
+      );
+      assertEquals(
+        seraResponse.plan!.steps[0].action.description,
+        "Determine how much you can afford to spend on your wedding.",
+      );
+      assertEquals(
+        Object.keys(seraResponse.plan!.steps[0].action.ideas || {}).length,
+        4,
+      );
       sinon.assert.calledOnce(supabaseClientStub.rpc);
       sinon.assert.calledWith(
         supabaseClientStub.rpc,
@@ -151,7 +134,6 @@ Deno.test("handleRequest", async (t) => {
           match_count: 10,
         },
       );
-
       createChatStub.restore();
       createChatLineStub.restore();
     });
@@ -184,71 +166,18 @@ Deno.test("handleRequest", async (t) => {
 
     assertSpyCalls(getAllChatLinesStub, 1);
   });
-  await t.step("handles poorly formatted responses", async () => {
-    const text =
-      "Sure, let's plan your dinner! Cooking at home is a great way to save money. Do you have the ingredients to make cheese risotto?";
-    const stepDescription =
-      "Check your pantry, fridge, and freezer for the ingredients needed to make cheese risotto. You will need Arborio rice, onion, garlic, vegetable broth, white wine, butter, Parmesan cheese, and Gorgonzola cheese.";
-    const stepName = "Gather ingredients";
-    const goal = "Make cheese risotto for dinner";
-    const badResponseStringWithPlan =
-      `ai: ai: {text: "${text}", question: "", plan: {goal: "${goal}", steps: [{number: 1, action: {name: "${stepName}", description: "${stepDescription}"}}]}}`;
-    const seraRequest: SeraRequest = {
-      message: "Hello",
-    };
-    const chatPromise = new Promise<number>((resolve) => {
-      resolve(chat);
-    });
-    const createChatStub = stub(
-      _privilegedRequestHandlerInternals,
-      "createChat",
-      returnsNext([chatPromise]),
-    );
-    const modelStubWithCallForBadResponseWithPlan = sinon.createStubInstance(
-      ChatOpenAI,
-      {
-        call: new AIChatMessage(badResponseStringWithPlan),
-      },
-    );
-    const splitterStub = sinon.createStubInstance(
-      RecursiveCharacterTextSplitter,
-    );
-    const modelsContextStub: ModelsContext = {
-      chat: modelStubWithCallForBadResponseWithPlan,
-      embed: embedModelStubWithCall,
-      splitter: splitterStub,
-    };
 
-    const seraResponse = await _privilegedRequestHandlerInternals.handleRequest(
-      modelsContextStub,
-      supabaseClientStub,
-      seraRequest,
-    );
-
-    const expectedResponse = {
-      text: text,
-      plan: {
-        goal: goal,
-        steps: [{
-          number: 1,
-          action: { name: stepName, description: stepDescription },
-        }],
-      },
-      question: "",
-      chat: chat,
-    };
-
-    assertStrictEquals(seraResponse.text, expectedResponse.text);
-    assertStrictEquals(
-      JSON.stringify(seraResponse.plan),
-      JSON.stringify(expectedResponse.plan),
-    );
-    assertEquals(seraResponse.chat, chat);
-
-    createChatStub.restore();
-  });
   await t.step("handles responses without plan JSON", async () => {
     const text = "Hello! How can I assist you today?";
+    const modelResponseStringWithoutPlan = `{\n  "summary": "${text}" }`;
+    const AIFunctionsStubWithoutPlan = {
+      additional_kwargs: {
+        function_call: {
+          name: "test_function",
+          arguments: modelResponseStringWithoutPlan,
+        },
+      },
+    };
     const seraRequest: SeraRequest = {
       message: "Hello",
     };
@@ -263,7 +192,9 @@ Deno.test("handleRequest", async (t) => {
     const modelStubWithCallForResponseWithoutPlan = sinon.createStubInstance(
       ChatOpenAI,
       {
-        call: new AIChatMessage(text),
+        predictMessages: new Promise((resolve) => {
+          resolve(AIFunctionsStubWithoutPlan);
+        }),
       },
     );
     const splitterStub = sinon.createStubInstance(
@@ -285,58 +216,10 @@ Deno.test("handleRequest", async (t) => {
       text: text,
       chat: chat,
     };
-
     assertStrictEquals(seraResponse.text, expectedResponse.text);
     assert(!Object.keys(seraResponse).includes("plan"));
-    assert(!Object.keys(seraResponse).includes("question"));
     assertEquals(seraResponse.chat, chat);
 
     createChatStub.restore();
   });
-  await t.step(
-    "handles responses when a key word is followed by a colon but is not used as a JSON key",
-    async () => {
-      const responseWithTrickyKeys =
-        `"{\n    \"text\": \"To help you decide between stocks and bonds, here is a plan:\",\n    \"question\": \"Do you think you can follow these steps?\",\n    \"plan\": {\n        \"goal\": \"Choose between stocks and bonds\",\n        \"steps\": [\n            {\n                \"number\": 1,\n                \"action\": {\n                    \"name\": \"Research stocks and bonds\",\n                    \"description\": \"Spend some time researching the differences between stocks and bonds. Look at the historical performance of each and consider the level of risk you are comfortable with.\"\n                }\n            },\n            {\n                \"number\": 2,\n                \"action\": {\n                    \"name\": \"Determine your investment goals\",\n                    \"description\": \"Think about your investment goals and how they align with the potential risks and returns of stocks and bonds. Consider your time horizon, risk tolerance, and financial situation.\"\n                }\n            },\n            {\n                \"number\": 3,\n                \"action\": {\n                    \"name\": \"Consult with a financial advisor\",\n                    \"description\": \"Consider consulting with a financial advisor to get professional advice on which investment option is best for you. They can help you create a personalized investment plan based on your goals and risk tolerance.\"\n                }\n            }\n        ]\n    }\n}"`;
-      const seraRequest: SeraRequest = {
-        message: "Hello",
-      };
-      const chatPromise = new Promise<number>((resolve) => {
-        resolve(chat);
-      });
-      const createChatStub = stub(
-        _privilegedRequestHandlerInternals,
-        "createChat",
-        returnsNext([chatPromise]),
-      );
-      const modelStubWithCallForResponseWithTrickyKeys = sinon
-        .createStubInstance(
-          ChatOpenAI,
-          {
-            call: new AIChatMessage(responseWithTrickyKeys),
-          },
-        );
-      const splitterStub = sinon.createStubInstance(
-        RecursiveCharacterTextSplitter,
-      );
-      const modelsContextStub: ModelsContext = {
-        chat: modelStubWithCallForResponseWithTrickyKeys,
-        embed: embedModelStubWithCall,
-        splitter: splitterStub,
-      };
-
-      const seraResponse = await _privilegedRequestHandlerInternals
-        .handleRequest(
-          modelsContextStub,
-          supabaseClientStub,
-          seraRequest,
-        );
-
-      assert(seraResponse.text);
-      assert(seraResponse.plan);
-      assert(seraResponse.chat);
-
-      createChatStub.restore();
-    },
-  );
 });

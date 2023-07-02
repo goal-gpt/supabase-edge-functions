@@ -1,6 +1,11 @@
 import { ChatOpenAI } from "langchain/chat_models/openai";
+import {
+  ChatCompletionFunctions,
+  ChatCompletionRequestMessageFunctionCall,
+} from "../../types/openai.ts";
 import { OpenAIEmbeddings } from "langchain/embeddings/openai";
 import { Document } from "langchain/document";
+import { BaseChatMessage } from "langchain/schema";
 import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
 import GPT3Tokenizer from "tokenizer";
 import { MatchDocumentsResponse } from "./supabaseClient.ts";
@@ -15,8 +20,12 @@ export function getChatOpenAI(): ChatOpenAI {
   return new ChatOpenAI({
     openAIApiKey: Deno.env.get("OPENAI_API_KEY"),
     temperature: 0,
-    modelName: "gpt-3.5-turbo",
+    modelName: "gpt-3.5-turbo-0613",
     verbose: true,
+    n: 1,
+    topP: 0.0,
+    frequencyPenalty: 0.0,
+    presencePenalty: 0.0,
   });
 }
 
@@ -50,9 +59,10 @@ export async function getEmbeddingString(
 export function truncateDocuments(
   documents: MatchDocumentsResponse,
   limit = 1500,
-): string {
+): { links: string[]; text: string } {
   let tokenCount = 0;
   let text = "";
+  const linkSet = new Set<string>();
 
   const tokenizer = new GPT3Tokenizer({ type: "gpt3" });
   for (let i = 0; i < documents.length; i++) {
@@ -65,9 +75,11 @@ export function truncateDocuments(
       break;
     }
 
+    linkSet.add(`[${title}](${link})`);
     text += `[${title}](${link}) - ${rawContent.trim()}\n|\n`;
   }
-  return text;
+  const links = Array.from(linkSet);
+  return { links, text };
 }
 
 export async function getChunkedDocuments(
@@ -76,6 +88,112 @@ export async function getChunkedDocuments(
 ): Promise<Document[]> {
   return await model.createDocuments([text]);
 }
+
+export async function getPredictedFunctionInputs(
+  model: ChatOpenAI,
+  messages: BaseChatMessage[],
+  functions: ChatCompletionFunctions[],
+  function_call?: string,
+): Promise<ChatCompletionRequestMessageFunctionCall> {
+  const response = await model.predictMessages(messages, {
+    functions,
+    function_call: function_call
+      ? {
+        name: function_call,
+      }
+      : "auto",
+  });
+  if (!response.additional_kwargs.function_call) {
+    throw new Error("No function call found in response");
+  }
+  console.log("Predicted function inputs: ", response);
+  return response.additional_kwargs.function_call;
+}
+
+export const getPlanSchema: ChatCompletionFunctions = {
+  name: "get_plan",
+  description: "Get a plan for the user.",
+  parameters: {
+    type: "object",
+    required: ["summary", "goal", "steps"],
+    additionalProperties: false,
+    properties: {
+      summary: {
+        type: "string",
+        description:
+          "An empathetic message describing the changes made to the user's plan. Max. 2 sentences.",
+      },
+      goal: {
+        type: "string",
+        description:
+          "The specific, measurable, achievable, relevant, and time-bound goal of the plan that starts with a verb.",
+      },
+      steps: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            number: {
+              type: "number",
+              description: "The number of the step.",
+            },
+            action: {
+              type: "object",
+              properties: {
+                name: {
+                  type: "string",
+                  description: "The name of the action.",
+                },
+                description: {
+                  type: "string",
+                  description:
+                    "An AI message to the user that describes the action and how it helps achieve the goal. This should be specific, measurable, achievable, relevant, and time-bound. Max. 2 sentences.",
+                },
+                ideas: {
+                  type: "object",
+                  properties: {
+                    mostObvious: {
+                      type: "string",
+                      description:
+                        "An AI message to the user that describes the most obvious way for the user to execute this step of this plan, tailored to their goal. Max. 1 sentence.",
+                    },
+                    leastObvious: {
+                      type: "string",
+                      description:
+                        "An AI message to the user that describes the least obvious way for the user to execute this step of this plan, tailored to their goal. Max. 1 sentence. Add links to relevant resources from the context.",
+                    },
+                    inventiveOrImaginative: {
+                      type: "string",
+                      description:
+                        "An AI message to the user that describes the most inventive or imaginative way for the user to execute this step of this plan, tailored to their goal. Max. 1 sentence. Add links to relevant resources from the context.",
+                    },
+                    rewardingOrSustainable: {
+                      type: "string",
+                      description:
+                        "An AI message to the user that describes the most rewarding or sustainable way for the user to execute this step of this plan, tailored to their goal. Do not suggest credit cards. Max. 1 sentence.Add links to relevant resources from the context.",
+                    },
+                  },
+                  required: [
+                    "mostObvious",
+                    "leastObvious",
+                    "inventiveOrImaginative",
+                    "rewardingOrSustainable",
+                  ],
+                  additionalProperties: false,
+                },
+              },
+              required: ["name", "description", "ideas"],
+              additionalProperties: false,
+            },
+          },
+          required: ["number", "action"],
+          additionalProperties: false,
+        },
+        description: "The steps of the plan",
+      },
+    },
+  },
+};
 
 // _internals are used for testing
 export const _internals = {
