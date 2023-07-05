@@ -204,7 +204,7 @@ export async function handleRequest(
     messages,
   );
   const { links, text: contextDocuments } = truncateDocuments(rawDocuments);
-  console.log("context: ", contextDocuments);
+
   const prompt = new PromptTemplate({
     template:
       '{premise}\nContext:\n###{context_documents}###\nMessages:\n"""\n{messages}\n"""',
