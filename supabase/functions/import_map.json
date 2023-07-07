@@ -7,6 +7,7 @@
     "tokenizer": "https://esm.sh/gpt3-tokenizer@1.1.5",
     "zod": "https://deno.land/x/zod@v3.21.4/mod.ts",
     "testing/": "https://deno.land/std@0.188.0/testing/",
-    "sinon": "https://cdn.skypack.dev/sinon"
+    "sinon": "https://cdn.skypack.dev/sinon",
+    "bdd": "https://deno.land/std@0.193.0/testing/bdd.ts"
   }
 }

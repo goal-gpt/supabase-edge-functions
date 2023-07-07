@@ -6,6 +6,23 @@ import {
 import { Document } from "./llm.ts";
 import { Database } from "../../types/supabase.ts";
 
+export type MatchDocumentsResponse =
+  Database["public"]["Functions"]["match_documents"]["Returns"];
+export type ContentRow = Database["public"]["Tables"]["content"]["Row"];
+export type DocumentRow = Database["public"]["Tables"]["document"]["Row"];
+export type PlanRow = Database["public"]["Tables"]["plan"]["Row"];
+export type InsertContent = {
+  url: string;
+  title: string;
+  rawContent: string;
+  userId: string;
+  shareable: boolean;
+};
+export type InsertResponse = {
+  error?: PostgrestError | string;
+  data?: null;
+};
+
 export function createClient() {
   return createSupabaseClient<Database>(
     // Supabase API URL - env var exported by default.
@@ -15,27 +32,20 @@ export function createClient() {
   );
 }
 
-export interface SaveContent {
-  url: string;
-  title: string;
-  rawContent: string;
-  userId: string;
-  shareable: boolean;
+export async function getUser(
+  supabaseClient: SupabaseClient<Database>,
+  token?: string,
+) {
+  const {
+    data: { user },
+  } = await supabaseClient.auth.getUser(token);
+  supabaseClient.auth;
+  return user;
 }
-
-export interface InsertResponse {
-  error?: PostgrestError | string;
-  data?: null;
-}
-
-export type MatchDocumentsResponse =
-  Database["public"]["Functions"]["match_documents"]["Returns"];
-export type ContentRow = Database["public"]["Tables"]["content"]["Row"];
-export type DocumentRow = Database["public"]["Tables"]["document"]["Row"];
 
 export async function saveContentToDatabase(
   supabaseClient: SupabaseClient<Database>,
-  { url, title, rawContent, userId, shareable }: SaveContent,
+  { url, title, rawContent, userId, shareable }: InsertContent,
 ) {
   return await supabaseClient
     .from("content")
@@ -133,7 +143,75 @@ export async function getSimilarDocuments(
   return documents;
 }
 
+export async function getPlan(
+  supabaseClient: SupabaseClient<Database>,
+  id: string,
+) {
+  const { data: plan, error } = await supabaseClient.from("plan").select("*")
+    .eq("id", id);
+  if (error) {
+    console.error("Error fetching plan:", error);
+    throw error;
+  }
+  return plan;
+}
+
+export async function getAllPlans(
+  supabaseClient: SupabaseClient<Database>,
+  // userID: string, // TODO: update this to use userID
+) {
+  const { data: plans, error } = await supabaseClient.from("plan").select("*");
+  if (error) {
+    console.error("Error fetching plans:", error);
+    throw error;
+  }
+  return plans;
+}
+
+export async function deletePlan(
+  supabaseClient: SupabaseClient<Database>,
+  id: string,
+) {
+  const { error } = await supabaseClient.from("plan").delete().eq("id", id);
+  if (error) {
+    console.error("Error deleting plan:", error);
+    throw error;
+  }
+
+  return id;
+}
+
+export async function updatePlan(
+  supabaseClient: SupabaseClient<Database>,
+  id: string,
+  plan: Partial<PlanRow>,
+) {
+  const { data, error } = await supabaseClient.from("plans").update(plan).eq(
+    "id",
+    id,
+  ).select();
+  if (error) {
+    console.error("Error updating plan:", error);
+    throw error;
+  }
+  return data;
+}
+
+export async function createPlan(
+  supabaseClient: SupabaseClient<Database>,
+  plan: Partial<PlanRow>,
+) {
+  const { data, error } = await supabaseClient.from("plans").insert(plan)
+    .select();
+  if (error) {
+    console.error("Error creating plan:", error);
+    throw error;
+  }
+  return data;
+}
+
 // _internals are used for testing
 export const _internals = {
   createClient,
+  getUser,
 };

@@ -127,6 +127,11 @@ export interface Step {
 export interface Plan {
   goal: string;
   steps: Step[];
+
+  id?: string;
+  userId?: string;
+  insertedAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface BaseSeraResponse {

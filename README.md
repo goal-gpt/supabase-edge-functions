@@ -83,4 +83,4 @@ supabase db diff
 When the DB is connected, it is now possible to make changes via the Supabase dashboard and create migrations in `supabase/migrations/*`. Follow these steps:
 - Make a change to the Supabase DB via the dashboard
 - Run `supabase db diff -f <new-migration-filename> --linked`
-- Run `supabase db reset` to apply the migrations locally
+- Run `supabase migration up` to apply the latest migration locally

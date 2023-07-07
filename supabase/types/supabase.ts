@@ -156,29 +156,26 @@ export interface Database {
       }
       plan: {
         Row: {
-          id: number
+          goal: string | null
+          id: string
           inserted_at: string
-          status: string | null
           steps: Json | null
-          title: string | null
           updated_at: string
           user_id: string | null
         }
         Insert: {
-          id?: number
+          goal?: string | null
+          id?: string
           inserted_at?: string
-          status?: string | null
           steps?: Json | null
-          title?: string | null
           updated_at?: string
           user_id?: string | null
         }
         Update: {
-          id?: number
+          goal?: string | null
+          id?: string
           inserted_at?: string
-          status?: string | null
           steps?: Json | null
-          title?: string | null
           updated_at?: string
           user_id?: string | null
         }
