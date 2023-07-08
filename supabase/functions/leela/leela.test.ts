@@ -1,9 +1,4 @@
-import {
-  assertSpyCallArgs,
-  assertSpyCalls,
-  returnsNext,
-  stub,
-} from "testing/mock.ts";
+import { assertEquals, assertRejects } from "testing/asserts.ts";
 import { _internals as _supabaseClientInternals } from "../_shared/supabaseClient.ts";
 import { _internals as _llmInternals } from "../_shared/llm.ts";
 import { Leela } from "./leela.ts";
@@ -15,32 +10,54 @@ Deno.test("contentHandler", async (t) => {
   await t.step(
     "should call dependencies with correct arguments and return expected result",
     async () => {
-      const url = "https://google.com";
-      const requestMock = new Request(url, {
-        method: "GET",
-      });
+      const url = "https://test.com/leela/plans";
+      const requestMock = new Request(url);
       const supabaseClientStub = sinon.createStubInstance(SupabaseClient);
-      const createClientStub = stub(
+      const createClientStub = sinon.stub(
         _supabaseClientInternals,
         "createClient",
-        returnsNext([supabaseClientStub]),
       );
-      const handlerStub = stub(
+      createClientStub.returns(supabaseClientStub);
+      const handlerStub = sinon.stub(
         _planInternals,
         "handlePlanRequest",
-        returnsNext([Promise.resolve(1)]),
       );
+      handlerStub.returns(Promise.resolve(1));
 
-      await new Leela().handlePlanRequest(requestMock);
+      await new Leela().handleRequest(requestMock);
 
-      assertSpyCalls(createClientStub, 1);
-      assertSpyCalls(handlerStub, 1);
-      assertSpyCallArgs(handlerStub, 0, [
+      assertEquals(createClientStub.callCount, 1);
+      assertEquals(handlerStub.callCount, 1);
+      assertEquals(handlerStub.args[0], [
         supabaseClientStub,
         requestMock,
       ]);
-
       sinon.restore();
+      sinon.reset();
     },
   );
+
+  await t.step("should throw error if resource is unknown", async () => {
+    const url = "https://test.com/leela/unknown";
+    const requestMock = new Request(url);
+    const supabaseClientStub = sinon.createStubInstance(SupabaseClient);
+    const createClientStub = sinon.stub(
+      _supabaseClientInternals,
+      "createClient",
+    );
+    createClientStub.returns(supabaseClientStub);
+
+    const leela = new Leela();
+
+    await assertRejects(
+      async () => {
+        await leela.handleRequest(requestMock);
+      },
+      Error,
+      "Unknown resource: unknown",
+    );
+
+    sinon.restore();
+    sinon.reset();
+  });
 });

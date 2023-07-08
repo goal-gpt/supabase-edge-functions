@@ -23,6 +23,8 @@ export type InsertResponse = {
   data?: null;
 };
 
+export type SupabaseClientType = SupabaseClient<Database>;
+
 export function createClient() {
   return createSupabaseClient<Database>(
     // Supabase API URL - env var exported by default.

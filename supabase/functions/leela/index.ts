@@ -5,7 +5,7 @@ import { serve } from "http/server.ts";
 import { Leela } from "./leela.ts";
 
 serve(async (request: Request) => {
-  const { url, method } = request;
+  const { method } = request;
 
   if (method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -13,28 +13,7 @@ serve(async (request: Request) => {
 
   try {
     const leela = new Leela();
-    const urlPattern = new URLPattern({
-      pathname: "/leela/:resource/:resourceID?",
-    });
-    const matchingPath = urlPattern.exec(url);
-    const resource = matchingPath?.pathname.groups.resource;
-    // const resourceID = matchingPath?.pathname.groups.resourceID;
-
-    let leelaResponse;
-
-    // Switch the handler based on the 'resource' field
-    switch (resource) {
-      case "plans":
-        leelaResponse = await leela.handlePlanRequest(
-          request,
-          // resourceID,
-        );
-        break;
-        // TODO: Add other handlers here
-      default:
-        throw new Error(`Unknown resource: ${resource}`);
-    }
-
+    const leelaResponse = await leela.handleRequest(request);
     return new Response(JSON.stringify(leelaResponse), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
