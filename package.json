@@ -7,8 +7,8 @@
     "supabase:stop": "supabase stop",
     "supabase:dev": "supabase functions serve --env-file supabase/.env",
     "supabase:deploy": "supabase secrets set --env-file ./supabase/.env && supabase functions deploy chat --import-map supabase/functions/import_map_deploy.json",
-    "test": "deno test --import-map=./supabase/functions/import_map.json --allow-env",
-    "test:local": "deno test --import-map=./supabase/functions/import_map.json --allow-env --trace-ops --watch",
+    "test": "deno test --import-map=./supabase/functions/import_map.json",
+    "test:local": "deno test --import-map=./supabase/functions/import_map.json --watch",
     "lint": "deno lint",
     "gen-db-types": "ts-node scripts/generateDBTypes.ts"
   },
