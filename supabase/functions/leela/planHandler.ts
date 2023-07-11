@@ -4,16 +4,17 @@ import { Database, Json } from "../../types/supabase.ts";
 import {
   // createPlan,
   // deletePlan,
-  getAllPlans,
+  // getAllPlans,
   // getPlan,
   // getUser,
   // updatePlan,
+  _internals as _supabaseClientInternals,
 } from "../_shared/supabaseClient.ts";
 
 async function handlePlanRequest(
   supabaseClient: SupabaseClient<Database>,
   request: Request,
-  // resourceID?: string,
+  resourceID?: string,
 ): Promise<Json> {
   const { method } = request;
   console.log("Handling plan method: ", method);
@@ -24,24 +25,32 @@ async function handlePlanRequest(
     // const user = await getUser(supabaseClient, token);
     // if (!user) throw new Error("User not found");
 
-    // let plan = null;
-    // if (method === "POST" || method === "PUT") {
-    //   const body = await request.json();
-    //   plan = body.task;
-    // }
+    let plan = null;
+    if (method === "POST" || method === "PUT") {
+      plan = await request.json();
+    }
 
     switch (true) {
-      // case resourceID && method === "GET":
-      //   return getPlan(supabaseClient, resourceID as string, user.id);
-      // case resourceID && method === "PUT":
-      //   return updatePlan(supabaseClient, resourceID as string, leelaRequest);
-      // case resourceID && method === "DELETE":
-      //   return deletePlan(supabaseClient, resourceID as string);
-      // case method === "POST":
-      //   return createPlan(supabaseClient, plan);
+      case resourceID && method === "GET":
+        return await _supabaseClientInternals.getPlan(
+          supabaseClient,
+          resourceID as string,
+        );
+      case resourceID && method === "PUT":
+        return await _supabaseClientInternals.updatePlan(
+          supabaseClient,
+          resourceID as string,
+          plan,
+        );
+      case resourceID && method === "DELETE":
+        return await _supabaseClientInternals.deletePlan(
+          supabaseClient,
+          resourceID as string,
+        );
+      case method === "POST":
+        return await _supabaseClientInternals.createPlan(supabaseClient, plan);
       case method === "GET":
-        // TODO: update this to add user ID
-        return await getAllPlans(supabaseClient);
+        return await _supabaseClientInternals.getAllPlans(supabaseClient);
       default:
         throw new Error("Invalid plan request");
     }

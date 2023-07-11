@@ -16,6 +16,7 @@ export class Leela {
     });
     const matchingPath = urlPattern.exec(url);
     const resource = matchingPath?.pathname.groups.resource;
+    const resourceID = matchingPath?.pathname.groups.resourceID;
     const supabaseClient = _supabaseClientInternals.createClient();
 
     // Switch the handler based on the 'resource' field
@@ -24,6 +25,7 @@ export class Leela {
         return await this.handlePlanRequest(
           supabaseClient,
           request,
+          resourceID,
         );
       default:
         throw new Error(`Unknown resource: ${resource}`);
@@ -32,10 +34,12 @@ export class Leela {
   async handlePlanRequest(
     supabaseClient: SupabaseClientType,
     request: Request,
+    resourceID?: string,
   ): Promise<Json> {
     return await _planInternals.handlePlanRequest(
       supabaseClient,
       request,
+      resourceID,
     );
   }
 }

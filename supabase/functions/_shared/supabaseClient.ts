@@ -148,38 +148,26 @@ export async function getSimilarDocuments(
 export async function getPlan(
   supabaseClient: SupabaseClient<Database>,
   id: string,
-) {
-  const { data: plan, error } = await supabaseClient.from("plan").select("*")
-    .eq("id", id);
-  if (error) {
-    console.error("Error fetching plan:", error);
-    throw error;
-  }
-  return plan;
+): Promise<PlanRow[]> {
+  const { data: plan } = await supabaseClient.from("plan").select("*")
+    .eq("id", id).throwOnError();
+  return plan as PlanRow[];
 }
 
 export async function getAllPlans(
   supabaseClient: SupabaseClient<Database>,
   // userID: string, // TODO: update this to use userID
-) {
-  const { data: plans, error } = await supabaseClient.from("plan").select("*");
-  if (error) {
-    console.error("Error fetching plans:", error);
-    throw error;
-  }
-  return plans;
+): Promise<PlanRow[]> {
+  const { data: plans } = await supabaseClient.from("plan").select("*")
+    .throwOnError();
+  return plans as PlanRow[];
 }
 
 export async function deletePlan(
   supabaseClient: SupabaseClient<Database>,
   id: string,
-) {
-  const { error } = await supabaseClient.from("plan").delete().eq("id", id);
-  if (error) {
-    console.error("Error deleting plan:", error);
-    throw error;
-  }
-
+): Promise<string> {
+  await supabaseClient.from("plan").delete().eq("id", id).throwOnError();
   return id;
 }
 
@@ -187,33 +175,30 @@ export async function updatePlan(
   supabaseClient: SupabaseClient<Database>,
   id: string,
   plan: Partial<PlanRow>,
-) {
-  const { data, error } = await supabaseClient.from("plans").update(plan).eq(
+): Promise<PlanRow[]> {
+  const { data } = await supabaseClient.from("plans").update(plan).eq(
     "id",
     id,
-  ).select();
-  if (error) {
-    console.error("Error updating plan:", error);
-    throw error;
-  }
-  return data;
+  ).select().throwOnError();
+  return data as PlanRow[];
 }
 
 export async function createPlan(
   supabaseClient: SupabaseClient<Database>,
   plan: Partial<PlanRow>,
-) {
-  const { data, error } = await supabaseClient.from("plans").insert(plan)
-    .select();
-  if (error) {
-    console.error("Error creating plan:", error);
-    throw error;
-  }
-  return data;
+): Promise<PlanRow[]> {
+  const { data } = await supabaseClient.from("plans").insert(plan)
+    .select().throwOnError();
+  return data as PlanRow[];
 }
 
 // _internals are used for testing
 export const _internals = {
   createClient,
+  createPlan,
+  deletePlan,
+  getAllPlans,
+  getPlan,
   getUser,
+  updatePlan,
 };
