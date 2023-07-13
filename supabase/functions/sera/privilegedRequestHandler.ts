@@ -7,6 +7,9 @@ import {
 } from "langchain/schema";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "../../types/supabase.ts";
+import {
+  ChatCompletionRequestMessageFunctionCall,
+} from "../../types/openai.ts";
 import { SeraRequest } from "./sera.ts";
 import { PromptTemplate } from "langchain/prompts";
 import {
@@ -73,8 +76,6 @@ async function createChatLine(
 
   const chatLine = data[0].id;
 
-  console.log("Created chatLine", chatLine);
-
   return chatLine;
 }
 
@@ -92,7 +93,6 @@ async function updateChatLineMessage(
     .select();
 
   if (error) throw error;
-  console.log("Updated chat line", chatLine);
 }
 
 async function createChat(
@@ -104,7 +104,6 @@ async function createChat(
 
   const chat = data[0].id;
 
-  console.log("Created chat", chat);
   return chat;
 }
 
@@ -234,17 +233,20 @@ export async function handleRequest(
   );
 
   // Clean up the JSON response from OpenAI
-  const regex = /\,(?=\s*?[\}\]])/g;
-  const cleanedArguments = planResponse.arguments?.replace(regex, "");
+  const cleanResponse = cleanPlanResponse(planResponse);
+  const planResponseJson = JSON.parse(cleanResponse);
+  planResponseJson.links = links.join(", ");
+
   const planMessage = new FunctionChatMessage(
-    (cleanedArguments || "") + "\nLinks: " + links.join(", "),
+    JSON.stringify(planResponseJson, null, 2),
     planResponse.name || "",
   );
+  delete planResponseJson.links;
+
   messages.push(planMessage);
   await _internals.createChatLine(supabaseClient, planMessage, chat);
 
   // Prepare the SeraResponse
-  const planResponseJson = JSON.parse(cleanedArguments || "");
   const response: SeraResponse = { chat, text: planResponseJson.summary };
   delete planResponseJson.summary;
   if (Object.keys(planResponseJson).length > 0) {
@@ -252,7 +254,14 @@ export async function handleRequest(
   }
   if (links) response.links = links;
   console.log("Response: ", response);
-  return response as SeraResponse;
+  return response;
+}
+
+function cleanPlanResponse(
+  planResponse: ChatCompletionRequestMessageFunctionCall,
+): string {
+  const regex = /\,(?=\s*?[\}\]])/g;
+  return planResponse.arguments?.replace(regex, "") || "{}";
 }
 
 // _internals are used for testing
