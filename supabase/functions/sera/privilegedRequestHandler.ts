@@ -76,8 +76,6 @@ async function createChatLine(
 
   const chatLine = data[0].id;
 
-  console.log("Created chatLine", chatLine);
-
   return chatLine;
 }
 
@@ -95,7 +93,6 @@ async function updateChatLineMessage(
     .select();
 
   if (error) throw error;
-  console.log("Updated chat line", chatLine);
 }
 
 async function createChat(
@@ -107,7 +104,6 @@ async function createChat(
 
   const chat = data[0].id;
 
-  console.log("Created chat", chat);
   return chat;
 }
 
@@ -245,6 +241,8 @@ export async function handleRequest(
     JSON.stringify(planResponseJson, null, 2),
     planResponse.name || "",
   );
+  delete planResponseJson.links;
+
   messages.push(planMessage);
   await _internals.createChatLine(supabaseClient, planMessage, chat);
 
