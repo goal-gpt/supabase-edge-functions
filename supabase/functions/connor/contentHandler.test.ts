@@ -192,8 +192,6 @@ Deno.test("fetchAndSaveContentChunks function", async () => {
   sinon.assert.calledWith(equalStub.firstCall, "id", contentId);
   sinon.assert.calledWith(equalStub.secondCall, "content", contentId);
   sinon.assert.calledTwice(insertStub);
-  console.log("huh!");
-  console.log(insertStub);
   sinon.assert.calledWith(insertStub.firstCall, [
     {
       content: contentId,

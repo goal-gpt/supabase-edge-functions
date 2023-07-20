@@ -7,15 +7,13 @@ import {
 } from "langchain/schema";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "../../types/supabase.ts";
-import {
-  ChatCompletionRequestMessageFunctionCall,
-} from "../../types/openai.ts";
 import { SeraRequest } from "./sera.ts";
 import { PromptTemplate } from "langchain/prompts";
 import {
+  ChatCompletionMessage,
   getEmbeddingString,
+  getFunctionInputs,
   getPlanSchema,
-  getPredictedFunctionInputs,
   ModelsContext,
   truncateDocuments,
 } from "../_shared/llm.ts";
@@ -203,10 +201,11 @@ export async function handleRequest(
     messages,
   );
   const { links, text: contextDocuments } = truncateDocuments(rawDocuments);
+  console.log("text: ", contextDocuments);
 
   const prompt = new PromptTemplate({
     template:
-      '{premise}\nContext:\n###{context_documents}###\nMessages:\n"""\n{messages}\n"""',
+      '{premise}\nContext:\n###\n{context_documents}###\nMessages:\n"""\n{messages}\n"""',
     inputVariables: [
       "premise",
       "context_documents",
@@ -220,26 +219,34 @@ export async function handleRequest(
     context_documents: contextDocuments,
     messages: mappedMessages.join("\n"),
   });
-  const planRequestMessage = new SystemChatMessage(input);
-
+  console.log("Input: ", input);
+  // const planRequestMessage = new SystemChatMessage(input);
+  const planRequestMessage = {
+    content: input,
+    role: "system",
+  } as ChatCompletionMessage;
   console.log("Calling OpenAI to get plan", planRequestMessage);
 
   // Get predicted inputs to make a plan
-  const planResponse = await getPredictedFunctionInputs(
+  const planResponse = await getFunctionInputs(
     modelsContext.chat,
     [planRequestMessage],
     [getPlanSchema],
     "get_plan",
   );
+  console.log("Plan response: ", planResponse);
 
   // Clean up the JSON response from OpenAI
-  const cleanResponse = cleanPlanResponse(planResponse);
+  const cleanResponse = cleanPlanResponse(
+    planResponse.arguments ?? "{}",
+  );
   const planResponseJson = JSON.parse(cleanResponse);
+  console.log("Plan response JSON: ", planResponseJson);
   planResponseJson.links = links.join(", ");
 
   const planMessage = new FunctionChatMessage(
     JSON.stringify(planResponseJson, null, 2),
-    planResponse.name || "",
+    "assistant",
   );
   delete planResponseJson.links;
 
@@ -258,10 +265,10 @@ export async function handleRequest(
 }
 
 function cleanPlanResponse(
-  planResponse: ChatCompletionRequestMessageFunctionCall,
+  planResponse: string,
 ): string {
   const regex = /\,(?=\s*?[\}\]])/g;
-  return planResponse.arguments?.replace(regex, "") || "{}";
+  return planResponse.replace(regex, "") || "{}";
 }
 
 // _internals are used for testing

@@ -16,7 +16,7 @@ export class Sera {
     console.log("Handling request:", seraRequest);
     const supabaseClient = _supabaseClientInternals.createClient();
     const modelsContext: ModelsContext = {
-      chat: _llmInternals.getChatOpenAI(),
+      chat: _llmInternals.getOpenAIWrapper(),
       embed: _llmInternals.getEmbeddingsOpenAI(),
       splitter: _llmInternals.getTextSplitter(),
     };

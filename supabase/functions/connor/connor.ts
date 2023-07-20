@@ -17,7 +17,7 @@ export class Connor {
     console.log("Handling request:", connorRequest);
     const supabaseClient = _supabaseClientInternals.createClient();
     const modelsContext: ModelsContext = {
-      chat: _llmInternals.getChatOpenAI(),
+      chat: _llmInternals.getOpenAIWrapper(),
       embed: _llmInternals.getEmbeddingsOpenAI(),
       splitter: _llmInternals.getTextSplitter(),
     };
