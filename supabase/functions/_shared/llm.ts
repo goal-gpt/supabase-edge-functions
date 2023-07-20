@@ -121,7 +121,7 @@ export const getPlanSchema: ChatCompletionFunctions = {
       summary: {
         type: "string",
         description:
-          "An empathetic message describing the changes made to the user's plan. Max. 2 sentences.",
+          "An empathetic message describing the changes made to the user's plan. Max. 3 sentences.",
       },
       goal: {
         type: "string",
@@ -130,8 +130,11 @@ export const getPlanSchema: ChatCompletionFunctions = {
       },
       steps: {
         type: "array",
+        description: "The steps of the plan",
         items: {
           type: "object",
+          required: ["number", "action"],
+          additionalProperties: false,
           properties: {
             number: {
               type: "number",
@@ -139,6 +142,8 @@ export const getPlanSchema: ChatCompletionFunctions = {
             },
             action: {
               type: "object",
+              required: ["name", "description", "ideas"],
+              additionalProperties: false,
               properties: {
                 name: {
                   type: "string",
@@ -147,7 +152,15 @@ export const getPlanSchema: ChatCompletionFunctions = {
                 description: {
                   type: "string",
                   description:
-                    "An AI message to the user that describes the action and how it helps achieve the goal. This should be specific, measurable, achievable, relevant, and time-bound. Max. 2 sentences.",
+                    "An AI message to the user that describes the action and how it helps achieve the goal. This should be specific, measurable, achievable, relevant, and time-bound. Max 2 sentences.",
+                },
+                links: {
+                  type: "array",
+                  description:
+                    "Links to relevant resources from the context. Max. 3 links. These are real sites. Do not make up URLs. Only use unique links from context.",
+                  items: {
+                    type: "string",
+                  },
                 },
                 ideas: {
                   type: "object",
@@ -182,14 +195,9 @@ export const getPlanSchema: ChatCompletionFunctions = {
                   additionalProperties: false,
                 },
               },
-              required: ["name", "description", "ideas"],
-              additionalProperties: false,
             },
           },
-          required: ["number", "action"],
-          additionalProperties: false,
         },
-        description: "The steps of the plan",
       },
     },
   },
