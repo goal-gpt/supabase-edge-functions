@@ -76,7 +76,7 @@ export function truncateDocuments(
     }
 
     linkSet.add(`[${title}](${link})`);
-    text += `[${title}](${link}) - ${rawContent.trim()}\n|\n`;
+    text += `[${title}](${link}) - ${rawContent.trim()} | `;
   }
   const links = Array.from(linkSet);
   return { links, text };
@@ -154,10 +154,10 @@ export const getPlanSchema: ChatCompletionFunctions = {
                   description:
                     "An AI message to the user that describes the action and how it helps achieve the goal. This should be specific, measurable, achievable, relevant, and time-bound. Max 2 sentences.",
                 },
-                links: {
+                rawLinks: {
                   type: "array",
                   description:
-                    "Links to relevant resources from the context. Max. 3 links. These are real sites. Do not make up URLs. Only use unique links from context.",
+                    "Links to relevant resources from the context delimited by brackets - \( and \). Max. 3 links. These are real sites. Do not make up URLs. Only use unique links from context.",
                   items: {
                     type: "string",
                   },

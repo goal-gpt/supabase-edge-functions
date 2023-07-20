@@ -36,7 +36,7 @@ Deno.test("handleRequest", async (t) => {
   });
   const embedding = "embedding";
   const modelResponseString =
-    `{\n  "summary": "To plan a wedding, you need to set a budget, create a guest list, choose a venue, select vendors, and plan the details.",\n  "goal": "Plan a wedding",\n  "steps": [\n    {\n      "number": 1,\n      "action": {\n        "name": "Set a budget",\n        "description": "Determine how much you can afford to spend on your wedding.",\n        "ideas": {\n          "mostObvious": "Calculate your total budget by considering your savings, contributions from family, and any loans you may need.",\n          "leastObvious": "Consider using a wedding budget calculator to help you allocate funds to different aspects of your wedding.",\n          "inventiveOrImaginative": "Explore creative ways to save money on your wedding, such as DIY decorations or opting for a non-traditional venue.",\n          "rewardingOrSustainable": "By setting a budget, you can ensure that you don\'t overspend and start your married life on a solid financial foundation."\n        }\n      }\n    },\n    {\n      "number": 2,\n      "action": {\n        "name": "Create a guest list",\n        "description": "Decide who you want to invite to your wedding.",\n        "ideas": {\n          "mostObvious": "Start by listing close family members and friends, and then consider extended family, colleagues, and acquaintances.",\n          "leastObvious": "Consider the size of your venue and your budget when finalizing your guest list.",\n          "inventiveOrImaginative": "If you have a large guest list but a limited budget, consider having a smaller, intimate ceremony and a larger reception.",\n          "rewardingOrSustainable": "Creating a guest list helps you estimate the number of guests and plan other aspects of your wedding, such as catering and seating arrangements."\n        }\n      }\n    } ]\n}`;
+    `{\n  "summary": "To plan a wedding, you need to set a budget, create a guest list, choose a venue, select vendors, and plan the details.",\n  "goal": "Plan a wedding",\n  "steps": [\n    {\n      "number": 1,\n      "action": {\n        "name": "Set a budget",\n        "description": "Determine how much you can afford to spend on your wedding.",\n        "ideas": {\n          "mostObvious": "Calculate your total budget by considering your savings, contributions from family, and any loans you may need.",\n          "leastObvious": "Consider using a wedding budget calculator to help you allocate funds to different aspects of your wedding.",\n          "inventiveOrImaginative": "Explore creative ways to save money on your wedding, such as DIY decorations or opting for a non-traditional venue.",\n          "rewardingOrSustainable": "By setting a budget, you can ensure that you don\'t overspend and start your married life on a solid financial foundation."\n        }\n      }\n, "rawLinks": ["https://example.com"]    },\n    {\n      "number": 2,\n      "action": {\n        "name": "Create a guest list",\n        "description": "Decide who you want to invite to your wedding.",\n        "ideas": {\n          "mostObvious": "Start by listing close family members and friends, and then consider extended family, colleagues, and acquaintances.",\n          "leastObvious": "Consider the size of your venue and your budget when finalizing your guest list.",\n          "inventiveOrImaginative": "If you have a large guest list but a limited budget, consider having a smaller, intimate ceremony and a larger reception.",\n          "rewardingOrSustainable": "Creating a guest list helps you estimate the number of guests and plan other aspects of your wedding, such as catering and seating arrangements."\n        }\n      }\n    } ]\n}`;
   const supabaseClientStub = sinon.createStubInstance(SupabaseClient, {
     rpc: rpcStub,
   });
@@ -217,6 +217,98 @@ Deno.test("handleRequest", async (t) => {
     };
     assertStrictEquals(seraResponse.text, expectedResponse.text);
     assert(!Object.keys(seraResponse).includes("plan"));
+    assertEquals(seraResponse.chat, chat);
+
+    createChatStub.restore();
+  });
+
+  await t.step("handles responses with plan JSON", async () => {
+    const seraRequest: SeraRequest = {
+      message: "Hello",
+    };
+    const chatPromise = new Promise<number>((resolve) => {
+      resolve(chat);
+    });
+    const createChatStub = stub(
+      _privilegedRequestHandlerInternals,
+      "createChat",
+      returnsNext([chatPromise]),
+    );
+    const modelStubWithCallForResponseWithPlan = sinon.createStubInstance(
+      ChatOpenAI,
+      {
+        predictMessages: new Promise((resolve) => {
+          resolve(AIFunctionsStub);
+        }),
+      },
+    );
+    const splitterStub = sinon.createStubInstance(
+      RecursiveCharacterTextSplitter,
+    );
+    const modelsContextStub: ModelsContext = {
+      chat: modelStubWithCallForResponseWithPlan,
+      embed: embedModelStubWithCall,
+      splitter: splitterStub,
+    };
+
+    const seraResponse = await _privilegedRequestHandlerInternals.handleRequest(
+      modelsContextStub,
+      supabaseClientStub,
+      seraRequest,
+    );
+
+    const expectedResponse = {
+      text:
+        "To plan a wedding, you need to set a budget, create a guest list, choose a venue, select vendors, and plan the details.",
+      links: [
+        `[${title}](${link})`,
+      ],
+      plan: {
+        goal: "Plan a wedding",
+        steps: [
+          {
+            number: 1,
+            rawLinks: [`${link}`],
+            action: {
+              name: "Set a budget",
+              description:
+                "Determine how much you can afford to spend on your wedding.",
+              ideas: {
+                mostObvious:
+                  "Calculate your total budget by considering your savings, contributions from family, and any loans you may need.",
+                leastObvious:
+                  "Consider using a wedding budget calculator to help you allocate funds to different aspects of your wedding.",
+                inventiveOrImaginative:
+                  "Explore creative ways to save money on your wedding, such as DIY decorations or opting for a non-traditional venue.",
+                rewardingOrSustainable:
+                  "By setting a budget, you can ensure that you don't overspend and start your married life on a solid financial foundation.",
+              },
+            },
+          },
+          {
+            number: 2,
+            action: {
+              name: "Create a guest list",
+              description: "Decide who you want to invite to your wedding.",
+              ideas: {
+                mostObvious:
+                  "Start by listing close family members and friends, and then consider extended family, colleagues, and acquaintances.",
+                leastObvious:
+                  "Consider the size of your venue and your budget when finalizing your guest list.",
+                inventiveOrImaginative:
+                  "If you have a large guest list but a limited budget, consider having a smaller, intimate ceremony and a larger reception.",
+                rewardingOrSustainable:
+                  "Creating a guest list helps you estimate the number of guests and plan other aspects of your wedding, such as catering and seating arrangements.",
+              },
+            },
+          },
+        ],
+      },
+      chat: chat,
+    };
+    assertEquals(seraResponse.text, expectedResponse.text);
+    assertEquals(seraResponse.links, expectedResponse.links);
+    assertEquals(seraResponse.plan, expectedResponse.plan);
     assertEquals(seraResponse.chat, chat);
 
     createChatStub.restore();
