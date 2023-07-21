@@ -5,6 +5,7 @@
     "langchain/": "https://esm.sh/langchain@0.0.101&no-dts/",
     "deno-dom": "https://deno.land/x/deno_dom@v0.1.38/deno-dom-wasm.ts",
     "tokenizer": "https://esm.sh/gpt3-tokenizer@1.1.5",
-    "zod": "https://deno.land/x/zod@v3.21.4/mod.ts"
+    "zod": "https://deno.land/x/zod@v3.21.4/mod.ts",
+    "cheerio": "https://esm.sh/cheerio@1.0.0-rc.12"
   }
 }

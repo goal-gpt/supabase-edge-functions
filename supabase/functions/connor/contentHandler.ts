@@ -14,6 +14,7 @@ import {
   getEmbeddingString,
   ModelsContext,
 } from "../_shared/llm.ts";
+import * as cheerio from "cheerio";
 
 async function handleRequest(
   modelsContext: ModelsContext,
@@ -43,18 +44,14 @@ async function scrapeAndSaveLink(
 ): Promise<Record<"data", ContentRow[]>> {
   const { rawContent, shareable = true, title: requestTitle, url, userId } =
     connorRequest;
-  let html = rawContent;
-
-  if (!html) {
-    const res = await fetch(url);
-    html = await res.text();
-  }
-
-  const title = requestTitle || extractTitleFromHtml(html);
+  const html = rawContent ? rawContent : await getHtml(url);
+  const $ = cheerio.load(html);
+  const title = requestTitle || getScrapedTitle($);
+  const body = getScrapedBody($);
   const { data, error } = await saveContentToDatabase(supabaseClient, {
     url,
     title,
-    rawContent: html,
+    rawContent: body,
     userId,
     shareable,
   });
@@ -68,9 +65,41 @@ async function scrapeAndSaveLink(
   }
 }
 
-function extractTitleFromHtml(html: string): string {
-  const titleMatch = html.match(/<title>(.*?)<\/title>/i);
-  return titleMatch ? titleMatch[1] : "";
+async function getHtml(url: string): Promise<string> {
+  const res = await fetch(url);
+  const html = await res.text();
+  return html;
+}
+
+function getScrapedTitle($: cheerio.CheerioAPI): string {
+  return $("title").first().text().trim() || "";
+}
+
+function getScrapedBody($: cheerio.CheerioAPI): string {
+  // Remove all script, style, and noscript tags from everywhere, including the body
+  const tagsToRemove = ["script", "style", "noscript", "svg", "img"];
+
+  tagsToRemove.forEach((tag) => {
+    $(tag).each((_index, item) => {
+      $(item).remove();
+    });
+  });
+
+  // Get the text from the body and trim whitespace
+  const body = $("body").text().trim();
+
+  // Split the input text by lines
+  const lines = body.split("\n");
+
+  // Remove whitespace from each line and filter out empty lines
+  const filteredLines = lines
+    .map((line) => line.trim())
+    .filter((line) => line !== "");
+
+  // Join the filtered lines with spaces instead of new lines as recommended
+  const scrapedBody = filteredLines.join(" ");
+
+  return scrapedBody;
 }
 
 async function fetchAndSaveContentChunks(
