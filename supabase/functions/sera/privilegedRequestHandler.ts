@@ -11,12 +11,16 @@ import {
   ChatCompletionRequestMessageFunctionCall,
 } from "../../types/openai.ts";
 import { SeraRequest } from "./sera.ts";
-import { PromptTemplate } from "langchain/prompts";
 import {
+  Action,
+  getChatCompletion,
   getEmbeddingString,
+  GetPlanJson,
   getPlanSchema,
   getPredictedFunctionInputs,
+  getSystemMessage,
   ModelsContext,
+  Plan,
   truncateDocuments,
 } from "../_shared/llm.ts";
 import { MatchDocumentsResponse } from "../_shared/supabaseClient.ts";
@@ -107,27 +111,6 @@ async function createChat(
   return chat;
 }
 
-export interface Action {
-  name: string;
-  description: string;
-  ideas?: {
-    mostObvious?: string;
-    leastObvious?: string;
-    inventiveOrImaginative?: string;
-    rewardingOrSustainable?: string;
-  };
-}
-
-export interface Step {
-  number: number;
-  action: Action;
-}
-
-export interface Plan {
-  goal: string;
-  steps: Step[];
-}
-
 export interface BaseSeraResponse {
   text: string;
   links?: string[];
@@ -204,23 +187,11 @@ export async function handleRequest(
   );
   const { links, text: contextDocuments } = truncateDocuments(rawDocuments);
 
-  const prompt = new PromptTemplate({
-    template:
-      '{premise}\nContext:\n###{context_documents}###\nMessages:\n"""\n{messages}\n"""',
-    inputVariables: [
-      "premise",
-      "context_documents",
-      "messages",
-    ],
-  });
-
-  const mappedMessages = messages.map((m) => m._getType() + ": " + m.text);
-  const input = await prompt.format({
-    premise: premise,
-    context_documents: contextDocuments,
-    messages: mappedMessages.join("\n"),
-  });
-  const planRequestMessage = new SystemChatMessage(input);
+  const planRequestMessage = await getSystemMessage(
+    premise,
+    contextDocuments,
+    messages,
+  );
 
   console.log("Calling OpenAI to get plan", planRequestMessage);
 
@@ -234,27 +205,112 @@ export async function handleRequest(
 
   // Clean up the JSON response from OpenAI
   const cleanResponse = cleanPlanResponse(planResponse);
-  const planResponseJson = JSON.parse(cleanResponse);
-  planResponseJson.links = links.join(", ");
+  const planResponseJson: GetPlanJson = JSON.parse(cleanResponse);
+
+  // Embed links in the plan actions
+  const linksInActionJson = await addLinksToAction(
+    modelsContext,
+    supabaseClient,
+    planResponseJson,
+  );
 
   const planMessage = new FunctionChatMessage(
-    JSON.stringify(planResponseJson, null, 2),
+    JSON.stringify(linksInActionJson, null, 2),
     planResponse.name || "",
   );
-  delete planResponseJson.links;
 
   messages.push(planMessage);
   await _internals.createChatLine(supabaseClient, planMessage, chat);
 
   // Prepare the SeraResponse
-  const response: SeraResponse = { chat, text: planResponseJson.summary };
-  delete planResponseJson.summary;
+  const response: SeraResponse = { chat, text: planResponseJson.text };
   if (Object.keys(planResponseJson).length > 0) {
     response.plan = planResponseJson;
   }
   if (links) response.links = links;
   console.log("Response: ", response);
   return response;
+}
+
+const actionPremise =
+  `You are an empathetic, emotionally-aware, and imaginative AI personal finance guide. ` +
+  `Combine the action description, delimited by """, with the links in the context so that users can learn more about the action by clicking on the links, where they are relevant, in the description. ` +
+  `Links are delimited by ###. The format is [title](url). These are real links. Do not make up links. `;
+
+async function addLinksToAction(
+  modelsContext: ModelsContext,
+  supabaseClient: SupabaseClient<Database>,
+  planResponseJson: GetPlanJson,
+): Promise<GetPlanJson> {
+  const newPlanResponseJson: GetPlanJson = { ...planResponseJson };
+  const { steps } = planResponseJson;
+  for (let i = 0; i < steps.length; i++) {
+    const { action } = steps[i];
+    const { description, ideas, name } = action;
+    const newIdeas = { ...ideas };
+    const newAction = {} as Action;
+
+    // Call OpenAI in parallel to add links to the ideas
+    // const promises: Promise<string[]>[] = Object.entries(ideas)
+    //   .filter(([, value]) => value)
+    //   .map(async ([key, value]) => {
+    //     const response = await addLinksToText(
+    //       modelsContext,
+    //       supabaseClient,
+    //       value,
+    //     );
+    //     return [key, response.text];
+    //   });
+
+    // Add the last promise for the description
+    const promises = [(async () => {
+      const response = await addLinksToText(
+        modelsContext,
+        supabaseClient,
+        description,
+      );
+      return ["description", response.text];
+    })()];
+    const results = await Promise.all(promises);
+
+    for (const [key, text] of results) {
+      if (key === "description") {
+        newAction.description = text;
+      } else {
+        newIdeas[key as keyof typeof ideas] = text;
+      }
+    }
+
+    newAction.ideas = newIdeas;
+    newAction.name = name;
+    newPlanResponseJson.steps[i].action = newAction;
+  }
+
+  console.log("New plan response: ", newPlanResponseJson);
+
+  return newPlanResponseJson;
+}
+
+async function addLinksToText(
+  modelsContext: ModelsContext,
+  supabaseClient: SupabaseClient<Database>,
+  value: string,
+): Promise<SystemChatMessage> {
+  const documents = await embedAndGetSimilarDocuments(
+    modelsContext.embed,
+    supabaseClient,
+    [new SystemChatMessage(value)],
+  );
+  const { text: contextDocuments } = truncateDocuments(documents);
+  const systemMessage = await getSystemMessage(
+    actionPremise,
+    contextDocuments,
+    [new SystemChatMessage(value)],
+  );
+  return await getChatCompletion(
+    modelsContext.chat,
+    [systemMessage],
+  );
 }
 
 function cleanPlanResponse(

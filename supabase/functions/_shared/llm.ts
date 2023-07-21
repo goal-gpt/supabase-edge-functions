@@ -5,16 +5,17 @@ import {
 } from "../../types/openai.ts";
 import { OpenAIEmbeddings } from "langchain/embeddings/openai";
 import { Document } from "langchain/document";
-import { BaseChatMessage } from "langchain/schema";
+import { BaseChatMessage, SystemChatMessage } from "langchain/schema";
 import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
+import { PromptTemplate } from "langchain/prompts";
 import GPT3Tokenizer from "tokenizer";
 import { MatchDocumentsResponse } from "./supabaseClient.ts";
 
-export interface ModelsContext {
+export type ModelsContext = {
   chat: ChatOpenAI;
   embed: OpenAIEmbeddings;
   splitter: RecursiveCharacterTextSplitter;
-}
+};
 
 export function getChatOpenAI(): ChatOpenAI {
   return new ChatOpenAI({
@@ -89,6 +90,37 @@ export async function getChunkedDocuments(
   return await model.createDocuments([text]);
 }
 
+export async function getChatCompletion(
+  model: ChatOpenAI,
+  messages: BaseChatMessage[],
+): Promise<BaseChatMessage> {
+  return await model.call(messages);
+}
+
+export async function getSystemMessage(
+  premise: string,
+  context: string,
+  messages: BaseChatMessage[],
+): Promise<SystemChatMessage> {
+  const prompt = new PromptTemplate({
+    template:
+      '{premise}\nContext:\n###{context}###\nMessages:\n"""\n{messages}\n"""',
+    inputVariables: [
+      "premise",
+      "context",
+      "messages",
+    ],
+  });
+
+  const mappedMessages = messages.map((m) => m._getType() + ": " + m.text);
+  const input = await prompt.format({
+    premise,
+    context,
+    messages: mappedMessages.join("\n"),
+  });
+  return new SystemChatMessage(input);
+}
+
 export async function getPredictedFunctionInputs(
   model: ChatOpenAI,
   messages: BaseChatMessage[],
@@ -110,15 +142,42 @@ export async function getPredictedFunctionInputs(
   return response.additional_kwargs.function_call;
 }
 
+// This type obeys the schema defined in getPlanSchema
+export type GetPlanJson = Plan & {
+  text: string;
+};
+
+export type Plan = {
+  goal: string;
+  steps: Step[];
+};
+
+export type Step = {
+  number: number;
+  action: Action;
+};
+
+export type Action = {
+  name: string;
+  description: string;
+  rawLinks?: string[];
+  ideas: {
+    mostObvious: string;
+    leastObvious: string;
+    inventiveOrImaginative: string;
+    rewardingOrSustainable: string;
+  };
+};
+
 export const getPlanSchema: ChatCompletionFunctions = {
   name: "get_plan",
   description: "Get a plan for the user.",
   parameters: {
     type: "object",
-    required: ["summary", "goal", "steps"],
+    required: ["text", "goal", "steps"],
     additionalProperties: false,
     properties: {
-      summary: {
+      text: {
         type: "string",
         description:
           "An empathetic message describing the changes made to the user's plan. Max. 3 sentences.",
