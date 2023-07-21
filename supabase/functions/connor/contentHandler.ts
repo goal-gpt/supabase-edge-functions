@@ -14,7 +14,7 @@ import {
   getEmbeddingString,
   ModelsContext,
 } from "../_shared/llm.ts";
-import * as cheerio from "https://esm.sh/cheerio@1.0.0-rc.12";
+import * as cheerio from "cheerio";
 
 async function handleRequest(
   modelsContext: ModelsContext,
@@ -77,16 +77,12 @@ function getScrapedTitle($: cheerio.CheerioAPI): string {
 
 function getScrapedBody($: cheerio.CheerioAPI): string {
   // Remove all script, style, and noscript tags from everywhere, including the body
-  $("script").each((_index, item) => {
-    $(item).remove();
-  });
+  const tagsToRemove = ["script", "style", "noscript", "svg", "img"];
 
-  $("style").each((_index, item) => {
-    $(item).remove();
-  });
-
-  $("noscript").each((_index, item) => {
-    $(item).remove();
+  tagsToRemove.forEach((tag) => {
+    $(tag).each((_index, item) => {
+      $(item).remove();
+    });
   });
 
   // Get the text from the body and trim whitespace
