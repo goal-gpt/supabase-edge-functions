@@ -12,7 +12,6 @@ import {
 } from "../../types/openai.ts";
 import { SeraRequest } from "./sera.ts";
 import {
-  Action,
   getChatCompletion,
   getEmbeddingString,
   GetPlanJson,
@@ -207,8 +206,8 @@ export async function handleRequest(
   const cleanResponse = cleanPlanResponse(planResponse);
   const planResponseJson: GetPlanJson = JSON.parse(cleanResponse);
 
-  // Embed links in the plan actions
-  const linksInActionJson = await addLinksToAction(
+  // Embed links in the plan descriptions
+  const linksInActionJson = await _internals.addLinksToAction(
     modelsContext,
     supabaseClient,
     planResponseJson,
@@ -223,9 +222,10 @@ export async function handleRequest(
   await _internals.createChatLine(supabaseClient, planMessage, chat);
 
   // Prepare the SeraResponse
-  const response: SeraResponse = { chat, text: planResponseJson.text };
+  const response: SeraResponse = { chat, text: planResponseJson.text || "" };
   if (Object.keys(planResponseJson).length > 0) {
-    response.plan = planResponseJson;
+    const { text: _text, ...rest } = planResponseJson;
+    response.plan = { ...rest };
   }
   if (links) response.links = links;
   console.log("Response: ", response);
@@ -233,9 +233,10 @@ export async function handleRequest(
 }
 
 const actionPremise =
-  `You are an empathetic, emotionally-aware, and imaginative AI personal finance guide. ` +
-  `Combine the action description, delimited by """, with the links in the context so that users can learn more about the action by clicking on the links, where they are relevant, in the description. ` +
-  `Links are delimited by ###. The format is [title](url). These are real links. Do not make up links. `;
+  `You are a robot with a single task: to replace words in a description with links. ` +
+  `Replace words in the description, delimited by """, with the links in the context, delimited by ###, so users can learn more by clicking on the links in the description. ` +
+  `Do not change the description or add to its length. Just add links. If no links make sense, return the original description and add the most relevant link at the end. ` +
+  `The link format is [title](url). These are real links. Do not make up links.`;
 
 async function addLinksToAction(
   modelsContext: ModelsContext,
@@ -244,49 +245,29 @@ async function addLinksToAction(
 ): Promise<GetPlanJson> {
   const newPlanResponseJson: GetPlanJson = { ...planResponseJson };
   const { steps } = planResponseJson;
+  const promises = [] as Promise<[number, string]>[];
+
+  // Add promises for description
   for (let i = 0; i < steps.length; i++) {
     const { action } = steps[i];
-    const { description, ideas, name } = action;
-    const newIdeas = { ...ideas };
-    const newAction = {} as Action;
-
-    // Call OpenAI in parallel to add links to the ideas
-    // const promises: Promise<string[]>[] = Object.entries(ideas)
-    //   .filter(([, value]) => value)
-    //   .map(async ([key, value]) => {
-    //     const response = await addLinksToText(
-    //       modelsContext,
-    //       supabaseClient,
-    //       value,
-    //     );
-    //     return [key, response.text];
-    //   });
-
-    // Add the last promise for the description
-    const promises = [(async () => {
-      const response = await addLinksToText(
-        modelsContext,
-        supabaseClient,
-        description,
-      );
-      return ["description", response.text];
-    })()];
-    const results = await Promise.all(promises);
-
-    for (const [key, text] of results) {
-      if (key === "description") {
-        newAction.description = text;
-      } else {
-        newIdeas[key as keyof typeof ideas] = text;
-      }
-    }
-
-    newAction.ideas = newIdeas;
-    newAction.name = name;
-    newPlanResponseJson.steps[i].action = newAction;
+    const { description } = action;
+    promises.push(
+      (async () => {
+        const response = await _internals.addLinksToText(
+          modelsContext,
+          supabaseClient,
+          description,
+        );
+        return [i, response.text];
+      })(),
+    );
   }
 
-  console.log("New plan response: ", newPlanResponseJson);
+  const results = await Promise.all(promises);
+  for (const [key, text] of results) {
+    console.log("key: ", key, "new description: ", text);
+    newPlanResponseJson.steps[key].action.description = text;
+  }
 
   return newPlanResponseJson;
 }
@@ -322,9 +303,12 @@ function cleanPlanResponse(
 
 // _internals are used for testing
 export const _internals = {
-  handleRequest,
+  addLinksToAction,
+  addLinksToText,
   createChat,
   createChatLine,
+  embedAndGetSimilarDocuments,
   getAllChatLines,
+  handleRequest,
   updateChatLineMessage,
 };
