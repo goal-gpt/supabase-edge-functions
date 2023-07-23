@@ -12,17 +12,23 @@ import {
 } from "testing/mock.ts";
 import {
   _internals as _privilegedRequestHandlerInternals,
-  premise,
 } from "./privilegedRequestHandler.ts";
-import { _internals as _supabaseClientInternals } from "../_shared/supabaseClient.ts";
-import { _internals as _llmInternals, ModelsContext } from "../_shared/llm.ts";
+import { PlanPremise } from "../_shared/plan.ts";
+import {
+  _internals as _supabaseClientInternals,
+  SupabaseClient,
+} from "../_shared/supabaseClient.ts";
+import {
+  _internals as _llmInternals,
+  BaseChatMessage,
+  ChatOpenAI,
+  ModelsContext,
+  OpenAIEmbeddings,
+  RecursiveCharacterTextSplitter,
+  SystemChatMessage,
+} from "../_shared/llm.ts";
 import { SeraRequest } from "./sera.ts";
-import { SupabaseClient } from "@supabase/supabase-js";
-import { ChatOpenAI } from "langchain/chat_models/openai";
-import { OpenAIEmbeddings } from "langchain/embeddings/openai";
-import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
 import * as sinon from "sinon";
-import { BaseChatMessage, SystemChatMessage } from "langchain/schema";
 
 // TODO: Determine how to make tests DRY-er
 // TODO: convert to use sinon.createSandbox()
@@ -90,17 +96,17 @@ Deno.test("handleRequest", async (t) => {
         resolve(chatLine);
       });
       const createChatStub = stub(
-        _privilegedRequestHandlerInternals,
+        _supabaseClientInternals,
         "createChat",
         returnsNext([chatPromise]),
       );
       const createChatLineStub = stub(
-        _privilegedRequestHandlerInternals,
+        _supabaseClientInternals,
         "createChatLine",
         returnsNext([chatLinePromise, chatLinePromise]),
       );
       stub(
-        _privilegedRequestHandlerInternals,
+        _supabaseClientInternals,
         "updateChatLineMessage",
       );
       const addLinksToActionStub = stub(
@@ -157,16 +163,16 @@ Deno.test("handleRequest", async (t) => {
     });
   });
   await t.step("with a chat, gets chat lines", async () => {
-    stub(_privilegedRequestHandlerInternals, "createChatLine");
+    stub(_supabaseClientInternals, "createChatLine");
 
-    const chatLines: BaseChatMessage[] = [new SystemChatMessage(premise)];
+    const chatLines: BaseChatMessage[] = [new SystemChatMessage(PlanPremise)];
     const chatLinesPromise: Promise<BaseChatMessage[]> = new Promise(
       (resolve) => {
         resolve(chatLines);
       },
     );
     const getAllChatLinesStub = stub(
-      _privilegedRequestHandlerInternals,
+      _supabaseClientInternals,
       "getAllChatLines",
       returnsNext([chatLinesPromise]),
     );
@@ -218,7 +224,7 @@ Deno.test("handleRequest", async (t) => {
       resolve(chat);
     });
     const createChatStub = stub(
-      _privilegedRequestHandlerInternals,
+      _supabaseClientInternals,
       "createChat",
       returnsNext([chatPromise]),
     );
@@ -275,7 +281,7 @@ Deno.test("handleRequest", async (t) => {
       resolve(chat);
     });
     const createChatStub = stub(
-      _privilegedRequestHandlerInternals,
+      _supabaseClientInternals,
       "createChat",
       returnsNext([chatPromise]),
     );

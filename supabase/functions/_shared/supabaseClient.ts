@@ -1,4 +1,10 @@
 import {
+  AIChatMessage,
+  BaseChatMessage,
+  HumanChatMessage,
+  SystemChatMessage,
+} from "langchain/schema";
+import {
   createClient as createSupabaseClient,
   PostgrestError,
   SupabaseClient,
@@ -133,7 +139,99 @@ export async function getSimilarDocuments(
   return documents;
 }
 
+async function getAllChatLines(
+  supabaseClient: SupabaseClient<Database>,
+  chat: number,
+): Promise<BaseChatMessage[]> {
+  console.log("Getting all chat lines", chat);
+  const { data, error } = await supabaseClient
+    .from("chat_line")
+    .select("*")
+    .eq("chat", chat);
+  if (error) throw error;
+
+  const messages: BaseChatMessage[] = [];
+
+  for (let i = 0; i < data.length; i++) {
+    if (data[i].message) {
+      switch (data[i].sender) {
+        case "ai":
+          messages.push(new AIChatMessage(data[i].message!));
+          break;
+        case "human":
+          messages.push(new HumanChatMessage(data[i].message!));
+          break;
+        case "system":
+          messages.push(new SystemChatMessage(data[i].message!));
+          break;
+        case "function":
+          // TODO: implement something here but, for now, we don't want to return multiple function messages
+          break;
+        default:
+          throw new Error("Invalid chat line sender");
+      }
+    }
+  }
+
+  return messages;
+}
+
+async function createChatLine(
+  supabaseClient: SupabaseClient<Database>,
+  message: BaseChatMessage,
+  chat: number,
+): Promise<number> {
+  console.log("Creating chat line", message.text, chat);
+
+  const { data, error } = await supabaseClient
+    .from("chat_line")
+    .insert({ chat: chat, message: message.text, sender: message._getType() })
+    .select();
+
+  if (error) throw error;
+
+  const { id } = data[0];
+
+  return id;
+}
+
+async function updateChatLineMessage(
+  supabaseClient: SupabaseClient<Database>,
+  chatLine: number,
+  messageText: string,
+) {
+  console.log("Updating chat line", chatLine, messageText);
+
+  const { error } = await supabaseClient
+    .from("chat_line")
+    .update({ message: messageText })
+    .eq("id", chatLine)
+    .select();
+
+  if (error) throw error;
+}
+
+async function createChat(
+  supabaseClient: SupabaseClient<Database>,
+): Promise<number> {
+  console.log("Creating chat");
+  const { data, error } = await supabaseClient.from("chat").insert({}).select();
+  if (error) throw error;
+
+  const chat = data[0].id;
+
+  return chat;
+}
+
 // _internals are used for testing
 export const _internals = {
   createClient,
+  createChat,
+  createChatLine,
+  getAllChatLines,
+  getSimilarDocuments,
+  updateChatLineMessage,
 };
+
+// Re-export types for convenience
+export { SupabaseClient };
