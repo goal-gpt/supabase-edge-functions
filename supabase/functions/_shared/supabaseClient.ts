@@ -233,5 +233,5 @@ export const _internals = {
   updateChatLineMessage,
 };
 
-// Re-export types for convenience
+// Re-exported for convenience
 export { SupabaseClient };

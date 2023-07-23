@@ -81,7 +81,7 @@ export async function handleRequest(
   );
 
   // Embed links in the plan descriptions
-  const linksInActionJson = await _internals.addLinksToAction(
+  const linksInActionJson = await _internals.addLinksToActions(
     modelsContext,
     supabaseClient,
     planResponseJson,
@@ -129,7 +129,7 @@ async function embedAndGetSimilarDocuments(
   return documents;
 }
 
-async function addLinksToAction(
+async function addLinksToActions(
   modelsContext: ModelsContext,
   supabaseClient: SupabaseClient<Database>,
   planResponseJson: GetPlanJson,
@@ -187,7 +187,7 @@ async function addLinksToText(
 
 // _internals are used for testing
 export const _internals = {
-  addLinksToAction,
+  addLinksToActions,
   addLinksToText,
   embedAndGetSimilarDocuments,
   handleRequest,

@@ -109,9 +109,9 @@ Deno.test("handleRequest", async (t) => {
         _supabaseClientInternals,
         "updateChatLineMessage",
       );
-      const addLinksToActionStub = stub(
+      const addLinksToActionsStub = stub(
         _privilegedRequestHandlerInternals,
-        "addLinksToAction",
+        "addLinksToActions",
         resolvesNext([Promise.resolve(modelResponseJson)]),
       );
 
@@ -151,15 +151,15 @@ Deno.test("handleRequest", async (t) => {
           match_count: 10,
         },
       );
-      assertSpyCalls(addLinksToActionStub, 1);
-      assertSpyCallArgs(addLinksToActionStub, 0, [
+      assertSpyCalls(addLinksToActionsStub, 1);
+      assertSpyCallArgs(addLinksToActionsStub, 0, [
         modelsContextStub,
         supabaseClientStub,
         modelResponseJson,
       ]);
       createChatStub.restore();
       createChatLineStub.restore();
-      addLinksToActionStub.restore();
+      addLinksToActionsStub.restore();
     });
   });
   await t.step("with a chat, gets chat lines", async () => {
@@ -176,9 +176,9 @@ Deno.test("handleRequest", async (t) => {
       "getAllChatLines",
       returnsNext([chatLinesPromise]),
     );
-    const addLinksToActionStub = stub(
+    const addLinksToActionsStub = stub(
       _privilegedRequestHandlerInternals,
-      "addLinksToAction",
+      "addLinksToActions",
       resolvesNext([Promise.resolve(modelResponseJson)]),
     );
 
@@ -194,13 +194,13 @@ Deno.test("handleRequest", async (t) => {
     );
 
     assertSpyCalls(getAllChatLinesStub, 1);
-    assertSpyCalls(addLinksToActionStub, 1);
-    assertSpyCallArgs(addLinksToActionStub, 0, [
+    assertSpyCalls(addLinksToActionsStub, 1);
+    assertSpyCallArgs(addLinksToActionsStub, 0, [
       modelsContextStub,
       supabaseClientStub,
       modelResponseJson,
     ]);
-    addLinksToActionStub.restore();
+    addLinksToActionsStub.restore();
   });
 
   await t.step("handles responses without plan JSON", async () => {
@@ -244,9 +244,9 @@ Deno.test("handleRequest", async (t) => {
       embed: embedModelStubWithCall,
       splitter: splitterStub,
     };
-    const addLinksToActionStub = stub(
+    const addLinksToActionsStub = stub(
       _privilegedRequestHandlerInternals,
-      "addLinksToAction",
+      "addLinksToActions",
       resolvesNext([Promise.resolve(modelResponseStringWithoutPlanJson)]),
     );
 
@@ -262,15 +262,15 @@ Deno.test("handleRequest", async (t) => {
     };
     assertStrictEquals(seraResponse.text, expectedResponse.text);
     assertEquals(seraResponse.chat, chat);
-    assertSpyCalls(addLinksToActionStub, 1);
-    assertSpyCallArgs(addLinksToActionStub, 0, [
+    assertSpyCalls(addLinksToActionsStub, 1);
+    assertSpyCallArgs(addLinksToActionsStub, 0, [
       modelsContextStub,
       supabaseClientStub,
       modelResponseStringWithoutPlanJson,
     ]);
 
     createChatStub.restore();
-    addLinksToActionStub.restore();
+    addLinksToActionsStub.restore();
   });
 
   await t.step("handles responses with plan JSON", async () => {
@@ -301,9 +301,9 @@ Deno.test("handleRequest", async (t) => {
       embed: embedModelStubWithCall,
       splitter: splitterStub,
     };
-    const addLinksToActionStub = stub(
+    const addLinksToActionsStub = stub(
       _privilegedRequestHandlerInternals,
-      "addLinksToAction",
+      "addLinksToActions",
       resolvesNext([Promise.resolve(modelResponseJson)]),
     );
 
@@ -366,8 +366,8 @@ Deno.test("handleRequest", async (t) => {
     assertEquals(seraResponse.links, expectedResponse.links);
     assertEquals(seraResponse.plan, expectedResponse.plan);
     assertEquals(seraResponse.chat, chat);
-    assertSpyCalls(addLinksToActionStub, 1);
-    assertSpyCallArgs(addLinksToActionStub, 0, [
+    assertSpyCalls(addLinksToActionsStub, 1);
+    assertSpyCallArgs(addLinksToActionsStub, 0, [
       modelsContextStub,
       supabaseClientStub,
       modelResponseJson,
