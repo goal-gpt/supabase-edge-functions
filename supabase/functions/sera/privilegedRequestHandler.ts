@@ -50,7 +50,7 @@ export async function handleRequest(
     chat,
   );
 
-  const rawDocuments = await embedAndGetSimilarDocuments(
+  const rawDocuments = await _internals.embedAndGetSimilarDocuments(
     modelsContext.embed,
     supabaseClient,
     messages,
@@ -168,7 +168,7 @@ async function addLinksToText(
   supabaseClient: SupabaseClient<Database>,
   value: string,
 ): Promise<SystemChatMessage> {
-  const documents = await embedAndGetSimilarDocuments(
+  const documents = await _internals.embedAndGetSimilarDocuments(
     modelsContext.embed,
     supabaseClient,
     [new SystemChatMessage(value)],
