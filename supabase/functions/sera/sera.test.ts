@@ -1,7 +1,6 @@
-import { Sera, SeraRequest } from "./sera.ts";
+import { Sera, SeraRequest, SeraResponse } from "./sera.ts";
 import {
   _internals as _privilegedRequestHandlerInternals,
-  SeraResponse,
 } from "./privilegedRequestHandler.ts";
 import { assert } from "testing/asserts.ts";
 import { assertSpyCalls, returnsNext, stub } from "testing/mock.ts";
