@@ -13,7 +13,7 @@ import {
 import {
   _internals as _privilegedRequestHandlerInternals,
 } from "./privilegedRequestHandler.ts";
-import { PlanPremise } from "../_shared/plan.ts";
+import { PLAN_PREMISE } from "../_shared/plan.ts";
 import {
   _internals as _supabaseClientInternals,
   SupabaseClient,
@@ -165,7 +165,7 @@ Deno.test("handleRequest", async (t) => {
   await t.step("with a chat, gets chat lines", async () => {
     stub(_supabaseClientInternals, "createChatLine");
 
-    const chatLines: BaseChatMessage[] = [new SystemChatMessage(PlanPremise)];
+    const chatLines: BaseChatMessage[] = [new SystemChatMessage(PLAN_PREMISE)];
     const chatLinesPromise: Promise<BaseChatMessage[]> = new Promise(
       (resolve) => {
         resolve(chatLines);

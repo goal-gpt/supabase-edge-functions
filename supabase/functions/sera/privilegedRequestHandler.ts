@@ -10,10 +10,10 @@ import {
   SystemChatMessage,
 } from "../_shared/llm.ts";
 import {
-  ActionPremise,
+  ACTION_PREMISE,
   GetPlanJson,
   GetPlanSchema,
-  PlanPremise,
+  PLAN_PREMISE,
 } from "../_shared/plan.ts";
 import {
   _internals as _supabaseClientInternals,
@@ -60,7 +60,7 @@ export async function handleRequest(
   );
 
   const planRequestMessage = await _llmInternals.getSystemMessage(
-    PlanPremise,
+    PLAN_PREMISE,
     contextDocuments,
     messages,
   );
@@ -175,7 +175,7 @@ async function addLinksToText(
   );
   const { text: contextDocuments } = _llmInternals.truncateDocuments(documents);
   const systemMessage = await _llmInternals.getSystemMessage(
-    ActionPremise,
+    ACTION_PREMISE,
     contextDocuments,
     [new SystemChatMessage(value)],
   );
