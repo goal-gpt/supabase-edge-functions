@@ -1,6 +1,6 @@
 import { ChatCompletionFunctions } from "../../types/openai.ts";
 
-// This type obeys the schema defined in GetPlanSchema
+// This type obeys the schema defined in PLAN_SCHEMA
 export type GetPlanJson = Plan & {
   text: string;
 };
@@ -53,8 +53,10 @@ export const ACTION_PREMISE =
   `Do not change the description or add to its length. Just add links. If no links make sense, return the original description and add the most relevant link at the end. ` +
   `The link format is [title](url). These are real links. Do not make up links.`;
 
-export const GetPlanSchema: ChatCompletionFunctions = {
-  name: "get_plan",
+export const PLAN_SCHEMA_NAME = "get_plan";
+
+export const PLAN_SCHEMA: ChatCompletionFunctions = {
+  name: PLAN_SCHEMA_NAME,
   description: "Get a plan for the user.",
   parameters: {
     type: "object",

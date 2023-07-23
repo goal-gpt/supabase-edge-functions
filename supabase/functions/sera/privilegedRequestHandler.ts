@@ -12,8 +12,9 @@ import {
 import {
   ACTION_PREMISE,
   GetPlanJson,
-  GetPlanSchema,
   PLAN_PREMISE,
+  PLAN_SCHEMA,
+  PLAN_SCHEMA_NAME,
 } from "../_shared/plan.ts";
 import {
   _internals as _supabaseClientInternals,
@@ -71,8 +72,8 @@ export async function handleRequest(
   const planResponse = await _llmInternals.getPredictedFunctionInputs(
     modelsContext.chat,
     [planRequestMessage],
-    [GetPlanSchema],
-    "get_plan",
+    [PLAN_SCHEMA],
+    PLAN_SCHEMA_NAME,
   );
 
   // Clean up the JSON response from OpenAI
