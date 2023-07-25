@@ -48,10 +48,9 @@ export const PLAN_PREMISE =
   `Never say that you are providing "advice".`;
 
 export const ACTION_PREMISE =
-  `You are a robot with a single task: to replace words in a description with links. ` +
-  `Replace words in the description, delimited by """, with the links in the context, delimited by ###, so users can learn more by clicking on the links in the description. ` +
-  `Do not change the description or add to its length. Just add links. If no links make sense, return the original description and add the most relevant link at the end. ` +
-  `The link format is [title](url). These are real links. Do not make up links.`;
+  `You are a robot with a single task: to add links to a description. ` +
+  `Replace words in the description, delimited by """, with the links in the context, delimited by ###, with a format of "[title](url) - link-summary |". Add links in the form [title](url) if the link-summary matches the description, but keep the change very short.  ` +
+  `You can change the description, but keep the changes concise and do not change the original meaning. You can adjust [title], but not (url). url is a real link. Do not make up links. Do not make up url.`;
 
 export const PLAN_SCHEMA_NAME = "get_plan";
 
