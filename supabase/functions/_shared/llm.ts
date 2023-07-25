@@ -5,16 +5,22 @@ import {
 } from "../../types/openai.ts";
 import { OpenAIEmbeddings } from "langchain/embeddings/openai";
 import { Document } from "langchain/document";
-import { BaseChatMessage } from "langchain/schema";
+import {
+  BaseChatMessage,
+  FunctionChatMessage,
+  HumanChatMessage,
+  SystemChatMessage,
+} from "langchain/schema";
 import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
+import { PromptTemplate } from "langchain/prompts";
 import GPT3Tokenizer from "tokenizer";
 import { MatchDocumentsResponse } from "./supabaseClient.ts";
 
-export interface ModelsContext {
+export type ModelsContext = {
   chat: ChatOpenAI;
   embed: OpenAIEmbeddings;
   splitter: RecursiveCharacterTextSplitter;
-}
+};
 
 export function getChatOpenAI(): ChatOpenAI {
   return new ChatOpenAI({
@@ -89,6 +95,37 @@ export async function getChunkedDocuments(
   return await model.createDocuments([text]);
 }
 
+export async function getChatCompletion(
+  model: ChatOpenAI,
+  messages: BaseChatMessage[],
+): Promise<BaseChatMessage> {
+  return await model.call(messages);
+}
+
+export async function getSystemMessage(
+  premise: string,
+  context: string,
+  messages: BaseChatMessage[],
+): Promise<SystemChatMessage> {
+  const prompt = new PromptTemplate({
+    template:
+      '{premise}\nContext:\n###{context}###\nMessages:\n"""\n{messages}\n"""',
+    inputVariables: [
+      "premise",
+      "context",
+      "messages",
+    ],
+  });
+
+  const mappedMessages = messages.map((m) => m._getType() + ": " + m.text);
+  const input = await prompt.format({
+    premise,
+    context,
+    messages: mappedMessages.join("\n"),
+  });
+  return new SystemChatMessage(input);
+}
+
 export async function getPredictedFunctionInputs(
   model: ChatOpenAI,
   messages: BaseChatMessage[],
@@ -110,113 +147,36 @@ export async function getPredictedFunctionInputs(
   return response.additional_kwargs.function_call;
 }
 
-export const getPlanSchema: ChatCompletionFunctions = {
-  name: "get_plan",
-  description: "Get a plan for the user.",
-  parameters: {
-    type: "object",
-    required: ["summary", "goal", "steps"],
-    additionalProperties: false,
-    properties: {
-      summary: {
-        type: "string",
-        description:
-          "An empathetic message describing the changes made to the user's plan. Max. 3 sentences.",
-      },
-      goal: {
-        type: "string",
-        description:
-          "The specific, measurable, achievable, relevant, and time-bound goal of the plan that starts with a verb.",
-      },
-      steps: {
-        type: "array",
-        description: "The steps of the plan",
-        items: {
-          type: "object",
-          required: ["number", "action"],
-          additionalProperties: false,
-          properties: {
-            number: {
-              type: "number",
-              description: "The number of the step.",
-            },
-            action: {
-              type: "object",
-              required: ["name", "description", "ideas"],
-              additionalProperties: false,
-              properties: {
-                name: {
-                  type: "string",
-                  description: "The name of the action.",
-                },
-                description: {
-                  type: "string",
-                  description:
-                    "An AI message to the user that describes the action and how it helps achieve the goal. This should be specific, measurable, achievable, relevant, and time-bound. Max 2 sentences.",
-                },
-                rawLinks: {
-                  type: "array",
-                  description:
-                    "Links to relevant resources from the context delimited by brackets - \( and \). Max. 3 links. These are real sites. Do not make up URLs. Only use unique links from context.",
-                  items: {
-                    type: "string",
-                  },
-                },
-                ideas: {
-                  type: "object",
-                  properties: {
-                    mostObvious: {
-                      type: "string",
-                      description:
-                        "An AI message to the user that describes the most obvious way for the user to execute this step of this plan, tailored to their goal. Max. 1 sentence.",
-                    },
-                    leastObvious: {
-                      type: "string",
-                      description:
-                        "An AI message to the user that describes the least obvious way for the user to execute this step of this plan, tailored to their goal. Max. 1 sentence. Add links to relevant resources from the context.",
-                    },
-                    inventiveOrImaginative: {
-                      type: "string",
-                      description:
-                        "An AI message to the user that describes the most inventive or imaginative way for the user to execute this step of this plan, tailored to their goal. Max. 1 sentence. Add links to relevant resources from the context.",
-                    },
-                    rewardingOrSustainable: {
-                      type: "string",
-                      description:
-                        "An AI message to the user that describes the most rewarding or sustainable way for the user to execute this step of this plan, tailored to their goal. Do not suggest credit cards. Max. 1 sentence.Add links to relevant resources from the context.",
-                    },
-                  },
-                  required: [
-                    "mostObvious",
-                    "leastObvious",
-                    "inventiveOrImaginative",
-                    "rewardingOrSustainable",
-                  ],
-                  additionalProperties: false,
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-  },
-};
+export function cleanJsonResponse(
+  response: ChatCompletionRequestMessageFunctionCall,
+) {
+  const regex = /\,(?=\s*?[\}\]])/g;
+  const cleaned = response.arguments?.replace(regex, "") || "{}";
+  return JSON.parse(cleaned);
+}
 
 // _internals are used for testing
 export const _internals = {
-  getChunkedDocuments,
+  cleanJsonResponse,
+  getChatCompletion,
   getChatOpenAI,
-  getEmbeddingsOpenAI,
+  getChunkedDocuments,
   getEmbeddingString,
+  getEmbeddingsOpenAI,
+  getPredictedFunctionInputs,
+  getSystemMessage,
   getTextSplitter,
   truncateDocuments,
 };
 
-// Re-export types for convenience
-export type {
+// Re-exported for convenience
+export {
+  BaseChatMessage,
   ChatOpenAI,
   Document,
+  FunctionChatMessage,
+  HumanChatMessage,
   OpenAIEmbeddings,
   RecursiveCharacterTextSplitter,
+  SystemChatMessage,
 };

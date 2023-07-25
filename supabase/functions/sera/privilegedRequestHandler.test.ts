@@ -1,25 +1,37 @@
-import { assertSpyCalls, returnsNext, stub } from "testing/mock.ts";
 import {
-  _internals as _privilegedRequestHandlerInternals,
-  premise,
-} from "./privilegedRequestHandler.ts";
-import { _internals as _supabaseClientInternals } from "../_shared/supabaseClient.ts";
-import { _internals as _llmInternals, ModelsContext } from "../_shared/llm.ts";
-import { SeraRequest } from "./sera.ts";
-import { SupabaseClient } from "@supabase/supabase-js";
-import { ChatOpenAI } from "langchain/chat_models/openai";
-import { OpenAIEmbeddings } from "langchain/embeddings/openai";
-import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
-import * as sinon from "sinon";
-import {
-  assert,
   assertEquals,
   assertStrictEquals,
   assertStringIncludes,
 } from "testing/asserts.ts";
-import { BaseChatMessage, SystemChatMessage } from "langchain/schema";
+import {
+  assertSpyCallArgs,
+  assertSpyCalls,
+  resolvesNext,
+  returnsNext,
+  stub,
+} from "testing/mock.ts";
+import {
+  _internals as _privilegedRequestHandlerInternals,
+} from "./privilegedRequestHandler.ts";
+import { PLAN_PREMISE } from "../_shared/plan.ts";
+import {
+  _internals as _supabaseClientInternals,
+  SupabaseClient,
+} from "../_shared/supabaseClient.ts";
+import {
+  _internals as _llmInternals,
+  BaseChatMessage,
+  ChatOpenAI,
+  ModelsContext,
+  OpenAIEmbeddings,
+  RecursiveCharacterTextSplitter,
+  SystemChatMessage,
+} from "../_shared/llm.ts";
+import { SeraRequest } from "./sera.ts";
+import * as sinon from "sinon";
 
 // TODO: Determine how to make tests DRY-er
+// TODO: convert to use sinon.createSandbox()
 Deno.test("handleRequest", async (t) => {
   const chat = 1;
   const chatLine = 1;
@@ -36,7 +48,8 @@ Deno.test("handleRequest", async (t) => {
   });
   const embedding = "embedding";
   const modelResponseString =
-    `{\n  "summary": "To plan a wedding, you need to set a budget, create a guest list, choose a venue, select vendors, and plan the details.",\n  "goal": "Plan a wedding",\n  "steps": [\n    {\n      "number": 1,\n      "action": {\n        "name": "Set a budget",\n        "description": "Determine how much you can afford to spend on your wedding.",\n        "ideas": {\n          "mostObvious": "Calculate your total budget by considering your savings, contributions from family, and any loans you may need.",\n          "leastObvious": "Consider using a wedding budget calculator to help you allocate funds to different aspects of your wedding.",\n          "inventiveOrImaginative": "Explore creative ways to save money on your wedding, such as DIY decorations or opting for a non-traditional venue.",\n          "rewardingOrSustainable": "By setting a budget, you can ensure that you don\'t overspend and start your married life on a solid financial foundation."\n        }\n      }\n, "rawLinks": ["https://example.com"]    },\n    {\n      "number": 2,\n      "action": {\n        "name": "Create a guest list",\n        "description": "Decide who you want to invite to your wedding.",\n        "ideas": {\n          "mostObvious": "Start by listing close family members and friends, and then consider extended family, colleagues, and acquaintances.",\n          "leastObvious": "Consider the size of your venue and your budget when finalizing your guest list.",\n          "inventiveOrImaginative": "If you have a large guest list but a limited budget, consider having a smaller, intimate ceremony and a larger reception.",\n          "rewardingOrSustainable": "Creating a guest list helps you estimate the number of guests and plan other aspects of your wedding, such as catering and seating arrangements."\n        }\n      }\n    } ]\n}`;
+    `{\n  "text": "To plan a wedding, you need to set a budget, create a guest list, choose a venue, select vendors, and plan the details.",\n  "goal": "Plan a wedding",\n  "steps": [\n    {\n      "number": 1,\n      "action": {\n        "name": "Set a budget",\n        "description": "Determine how much you can afford to spend on your wedding.",\n        "ideas": {\n          "mostObvious": "Calculate your total budget by considering your savings, contributions from family, and any loans you may need.",\n          "leastObvious": "Consider using a wedding budget calculator to help you allocate funds to different aspects of your wedding.",\n          "inventiveOrImaginative": "Explore creative ways to save money on your wedding, such as DIY decorations or opting for a non-traditional venue.",\n          "rewardingOrSustainable": "By setting a budget, you can ensure that you don\'t overspend and start your married life on a solid financial foundation."\n        }\n      }\n, "rawLinks": ["https://example.com"]    },\n    {\n      "number": 2,\n      "action": {\n        "name": "Create a guest list",\n        "description": "Decide who you want to invite to your wedding.",\n        "ideas": {\n          "mostObvious": "Start by listing close family members and friends, and then consider extended family, colleagues, and acquaintances.",\n          "leastObvious": "Consider the size of your venue and your budget when finalizing your guest list.",\n          "inventiveOrImaginative": "If you have a large guest list but a limited budget, consider having a smaller, intimate ceremony and a larger reception.",\n          "rewardingOrSustainable": "Creating a guest list helps you estimate the number of guests and plan other aspects of your wedding, such as catering and seating arrangements."\n        }\n      }\n    } ]\n}`;
+  const modelResponseJson = JSON.parse(modelResponseString);
   const supabaseClientStub = sinon.createStubInstance(SupabaseClient, {
     rpc: rpcStub,
   });
@@ -83,18 +96,23 @@ Deno.test("handleRequest", async (t) => {
         resolve(chatLine);
       });
       const createChatStub = stub(
-        _privilegedRequestHandlerInternals,
+        _supabaseClientInternals,
         "createChat",
         returnsNext([chatPromise]),
       );
       const createChatLineStub = stub(
-        _privilegedRequestHandlerInternals,
+        _supabaseClientInternals,
         "createChatLine",
         returnsNext([chatLinePromise, chatLinePromise]),
       );
       stub(
-        _privilegedRequestHandlerInternals,
+        _supabaseClientInternals,
         "updateChatLineMessage",
+      );
+      const addLinksToActionsStub = stub(
+        _privilegedRequestHandlerInternals,
+        "addLinksToActions",
+        resolvesNext([Promise.resolve(modelResponseJson)]),
       );
 
       const seraResponse = await _privilegedRequestHandlerInternals
@@ -133,23 +151,35 @@ Deno.test("handleRequest", async (t) => {
           match_count: 10,
         },
       );
+      assertSpyCalls(addLinksToActionsStub, 1);
+      assertSpyCallArgs(addLinksToActionsStub, 0, [
+        modelsContextStub,
+        supabaseClientStub,
+        modelResponseJson,
+      ]);
       createChatStub.restore();
       createChatLineStub.restore();
+      addLinksToActionsStub.restore();
     });
   });
   await t.step("with a chat, gets chat lines", async () => {
-    stub(_privilegedRequestHandlerInternals, "createChatLine");
+    stub(_supabaseClientInternals, "createChatLine");
 
-    const chatLines: BaseChatMessage[] = [new SystemChatMessage(premise)];
+    const chatLines: BaseChatMessage[] = [new SystemChatMessage(PLAN_PREMISE)];
     const chatLinesPromise: Promise<BaseChatMessage[]> = new Promise(
       (resolve) => {
         resolve(chatLines);
       },
     );
     const getAllChatLinesStub = stub(
-      _privilegedRequestHandlerInternals,
+      _supabaseClientInternals,
       "getAllChatLines",
       returnsNext([chatLinesPromise]),
+    );
+    const addLinksToActionsStub = stub(
+      _privilegedRequestHandlerInternals,
+      "addLinksToActions",
+      resolvesNext([Promise.resolve(modelResponseJson)]),
     );
 
     const seraRequest: SeraRequest = {
@@ -164,11 +194,18 @@ Deno.test("handleRequest", async (t) => {
     );
 
     assertSpyCalls(getAllChatLinesStub, 1);
+    assertSpyCalls(addLinksToActionsStub, 1);
+    assertSpyCallArgs(addLinksToActionsStub, 0, [
+      modelsContextStub,
+      supabaseClientStub,
+      modelResponseJson,
+    ]);
+    addLinksToActionsStub.restore();
   });
 
   await t.step("handles responses without plan JSON", async () => {
     const text = "Hello! How can I assist you today?";
-    const modelResponseStringWithoutPlan = `{\n  "summary": "${text}" }`;
+    const modelResponseStringWithoutPlan = `{\n  "text": "${text}" }`;
     const AIFunctionsStubWithoutPlan = {
       additional_kwargs: {
         function_call: {
@@ -177,6 +214,9 @@ Deno.test("handleRequest", async (t) => {
         },
       },
     };
+    const modelResponseStringWithoutPlanJson = JSON.parse(
+      modelResponseStringWithoutPlan,
+    );
     const seraRequest: SeraRequest = {
       message: "Hello",
     };
@@ -184,7 +224,7 @@ Deno.test("handleRequest", async (t) => {
       resolve(chat);
     });
     const createChatStub = stub(
-      _privilegedRequestHandlerInternals,
+      _supabaseClientInternals,
       "createChat",
       returnsNext([chatPromise]),
     );
@@ -204,6 +244,11 @@ Deno.test("handleRequest", async (t) => {
       embed: embedModelStubWithCall,
       splitter: splitterStub,
     };
+    const addLinksToActionsStub = stub(
+      _privilegedRequestHandlerInternals,
+      "addLinksToActions",
+      resolvesNext([Promise.resolve(modelResponseStringWithoutPlanJson)]),
+    );
 
     const seraResponse = await _privilegedRequestHandlerInternals.handleRequest(
       modelsContextStub,
@@ -216,10 +261,16 @@ Deno.test("handleRequest", async (t) => {
       chat: chat,
     };
     assertStrictEquals(seraResponse.text, expectedResponse.text);
-    assert(!Object.keys(seraResponse).includes("plan"));
     assertEquals(seraResponse.chat, chat);
+    assertSpyCalls(addLinksToActionsStub, 1);
+    assertSpyCallArgs(addLinksToActionsStub, 0, [
+      modelsContextStub,
+      supabaseClientStub,
+      modelResponseStringWithoutPlanJson,
+    ]);
 
     createChatStub.restore();
+    addLinksToActionsStub.restore();
   });
 
   await t.step("handles responses with plan JSON", async () => {
@@ -230,7 +281,7 @@ Deno.test("handleRequest", async (t) => {
       resolve(chat);
     });
     const createChatStub = stub(
-      _privilegedRequestHandlerInternals,
+      _supabaseClientInternals,
       "createChat",
       returnsNext([chatPromise]),
     );
@@ -250,6 +301,11 @@ Deno.test("handleRequest", async (t) => {
       embed: embedModelStubWithCall,
       splitter: splitterStub,
     };
+    const addLinksToActionsStub = stub(
+      _privilegedRequestHandlerInternals,
+      "addLinksToActions",
+      resolvesNext([Promise.resolve(modelResponseJson)]),
+    );
 
     const seraResponse = await _privilegedRequestHandlerInternals.handleRequest(
       modelsContextStub,
@@ -310,6 +366,12 @@ Deno.test("handleRequest", async (t) => {
     assertEquals(seraResponse.links, expectedResponse.links);
     assertEquals(seraResponse.plan, expectedResponse.plan);
     assertEquals(seraResponse.chat, chat);
+    assertSpyCalls(addLinksToActionsStub, 1);
+    assertSpyCallArgs(addLinksToActionsStub, 0, [
+      modelsContextStub,
+      supabaseClientStub,
+      modelResponseJson,
+    ]);
 
     createChatStub.restore();
   });
