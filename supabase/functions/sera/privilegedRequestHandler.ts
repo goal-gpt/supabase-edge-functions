@@ -15,6 +15,8 @@ import {
   PLAN_PREMISE,
   PLAN_SCHEMA,
   PLAN_SCHEMA_NAME,
+  TEMPLATE_FOR_ACTION_REQUEST,
+  TEMPLATE_FOR_PLAN_REQUEST,
 } from "../_shared/plan.ts";
 import {
   _internals as _supabaseClientInternals,
@@ -60,10 +62,14 @@ export async function handleRequest(
     rawDocuments,
   );
 
+  const systemMessageMessages = _llmInternals.getMessagesForSystemMessage(
+    messages,
+  );
   const planRequestMessage = await _llmInternals.getSystemMessage(
+    TEMPLATE_FOR_PLAN_REQUEST,
     PLAN_PREMISE,
     contextDocuments,
-    messages,
+    systemMessageMessages,
   );
 
   console.log("Calling OpenAI to get plan", planRequestMessage);
@@ -107,7 +113,7 @@ export async function handleRequest(
     response.plan = { ...rest };
   }
   if (links) response.links = links;
-  console.log("Response: ", response);
+  console.log("Response: ", JSON.stringify(response, null, 2));
   return response;
 }
 
@@ -176,9 +182,10 @@ async function addLinksToText(
   );
   const { text: contextDocuments } = _llmInternals.truncateDocuments(documents);
   const systemMessage = await _llmInternals.getSystemMessage(
+    TEMPLATE_FOR_ACTION_REQUEST,
     ACTION_PREMISE,
     contextDocuments,
-    [new SystemChatMessage(value)],
+    value,
   );
   return await _llmInternals.getChatCompletion(
     modelsContext.chat,

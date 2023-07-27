@@ -1,3 +1,4 @@
+import { PromptTemplate } from "langchain/prompts";
 import { ChatCompletionFunctions } from "../../types/openai.ts";
 
 // This type obeys the schema defined in PLAN_SCHEMA
@@ -30,9 +31,9 @@ export type Action = {
 export const PLAN_PREMISE =
   `You are an empathetic, emotionally-aware, and imaginative AI personal finance guide. ` +
   `You are very creative and open-minded when it comes to finding financial aspects to requests. ` +
-  `Make use of context_documents, delimited by ###, to add information and links into the answers you provide whenever possible. ` +
-  `Quotations from context_documents should be used to substantiate your claims as long as they are cited. ` +
-  `Here is an example citation: Individuals should establish a household budget to understand their cash flow (Source: [Household budgeting](https://www.bogleheads.org/wiki/Household_budgeting)). ` +
+  `Make use of the context documents, delimited by ###, to add information to the answers you provide. ` +
+  // `Quotations from the context documents should be used to substantiate your claims as long as they are cited. ` +
+  // `Here is an example citation: Individuals should establish a household budget to understand their cash flow (Source: [Household budgeting](https://www.bogleheads.org/wiki/Household_budgeting)). ` +
   `Your task is to make a plan for the user that helps them resolve their financial concerns or achieve their financial goals, ` +
   `based on the messages between you and the user, delimited by """. ` +
   `If you cannot determine the user's financial concerns or goals based on the messages, ` +
@@ -40,17 +41,37 @@ export const PLAN_PREMISE =
   `Unless you know otherwise, assume the user is also concerned ` +
   `with inflation, has very little savings, has very little experience budgeting, is open to ` +
   `new or additional jobs, and is open to online learning.` +
-  `The plan should be thorough, imaginative, and consist of small steps. Add sources from context_documents where possible. ` +
+  `The plan should be thorough, imaginative, and consist of small steps. Add sources from the context documents where possible. ` +
   `The plan should not include steps the user has already taken. ` +
   `If you have already made a plan, use information in the messages to update the plan, including the numbering of the steps, if sensible. ` +
   `If you do not know the answer, explain that you do not know the answer. ` +
   `Do not make up an answer. ` +
   `Never say that you are providing "advice".`;
 
+export const TEMPLATE_FOR_PLAN_REQUEST = new PromptTemplate({
+  template:
+    '{premise}\nContext Documents:\n###{internal_data}###\nMessages:\n"""\n{external_data}\n"""',
+  inputVariables: [
+    "premise",
+    "internal_data",
+    "external_data",
+  ],
+});
+
 export const ACTION_PREMISE =
   `You are a robot with a single task: to add links to a description. ` +
-  `Replace words in the description, delimited by """, with the links in the context, delimited by ###, with a format of "[title](url) - link-summary |". Add links in the form [title](url) if the link-summary matches the description, but keep the change to 1 sentence. One sentence change only. Do not include link-summary in your response, only [title](url). Do not add link-summary to the description. ` +
+  `Replace words in the description, delimited by """, with the links, delimited by ###, with a format of "[title](url) - link-summary |". Add links in the form [title](url) if the link-summary matches the description, but keep the change to 1 sentence. One sentence change only. Do not include link-summary in your response, only [title](url). Do not add link-summary to the description. ` +
   `You can change the description, but keep the changes concise and do not change the original meaning. You can adjust [title], but not (url). url is a real link. Do not make up links. Do not make up url.`;
+
+export const TEMPLATE_FOR_ACTION_REQUEST = new PromptTemplate({
+  template:
+    '{premise}\nLinks:\n###{internal_data}###\nDescription:\n"""\n{external_data}\n"""',
+  inputVariables: [
+    "premise",
+    "internal_data",
+    "external_data",
+  ],
+});
 
 export const PLAN_SCHEMA_NAME = "get_plan";
 
