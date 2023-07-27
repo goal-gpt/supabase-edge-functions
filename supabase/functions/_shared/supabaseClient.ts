@@ -27,6 +27,7 @@ export interface SaveContent {
   rawContent: string;
   userId: string;
   shareable: boolean;
+  affiliate: boolean;
 }
 
 export interface InsertResponse {
@@ -41,7 +42,7 @@ export type DocumentRow = Database["public"]["Tables"]["document"]["Row"];
 
 export async function saveContentToDatabase(
   supabaseClient: SupabaseClient<Database>,
-  { url, title, rawContent, userId, shareable }: SaveContent,
+  { url, title, rawContent, userId, shareable, affiliate }: SaveContent,
 ) {
   return await supabaseClient
     .from("content")
@@ -52,6 +53,7 @@ export async function saveContentToDatabase(
         raw_content: rawContent,
         shareable: shareable,
         user_id: userId,
+        affiliate: affiliate,
       },
     ])
     .select();

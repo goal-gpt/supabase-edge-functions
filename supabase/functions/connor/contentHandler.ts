@@ -42,7 +42,7 @@ async function scrapeAndSaveLink(
   supabaseClient: SupabaseClient<Database>,
   connorRequest: ConnorRequest,
 ): Promise<Record<"data", ContentRow[]>> {
-  const { rawContent, shareable = true, title: requestTitle, url, userId } =
+  const { rawContent, shareable = true, title: requestTitle, url, userId, affiliate = false } =
     connorRequest;
   const html = rawContent ? rawContent : await getHtml(url);
   const $ = cheerio.load(html);
@@ -54,6 +54,7 @@ async function scrapeAndSaveLink(
     rawContent: body,
     userId,
     shareable,
+    affiliate,
   });
 
   if (error) {

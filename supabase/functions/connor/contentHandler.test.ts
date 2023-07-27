@@ -69,6 +69,7 @@ Deno.test("scrapeAndSaveLink function", async (t) => {
         raw_content: "Here is some financial guidance.",
         shareable: true,
         user_id: userId,
+        affiliate: false,
       },
     ]);
     assertEquals(response, { data: [{ id: contentId } as ContentRow] });
@@ -119,12 +120,51 @@ Deno.test("scrapeAndSaveLink function", async (t) => {
         raw_content: rawContent,
         shareable: false,
         user_id: userId,
+        affiliate: false,
       },
     ]);
     // TODO: fetchStub was really janky to get to work, figure out a better way
     assertEquals(fetchStub.calls.length, 0);
     assertEquals(response, { data: [{ id: contentId } as ContentRow] });
     sinon.restore();
+  });
+
+  await t.step("saves content with affiliate input", async () => {
+    const supabaseClientStub = sinon.createStubInstance(SupabaseClient);
+    const url = "https://example.com";
+    const userId = "testUserId";
+    const contentId = 1;
+    const rawContent = "Test Content";
+    const title = "Test Title";
+    const requestMock: ConnorRequest = {
+      url: url,
+      userId: userId,
+      rawContent: rawContent,
+      shareable: false,
+      title: title,
+      affiliate: true,
+    };
+    const selectStub = sinon.stub().returns(
+      Promise.resolve({ data: [{ id: contentId }] }),
+    );
+    const insertStub = sinon.stub().returns({ select: selectStub });
+    supabaseClientStub.from.returns({ insert: insertStub });
+
+    await _contentInternals.scrapeAndSaveLink(
+      supabaseClientStub,
+      requestMock,
+    );
+
+    sinon.assert.calledWith(insertStub, [
+      {
+        link: url,
+        title: title,
+        raw_content: rawContent,
+        shareable: false,
+        user_id: userId,
+        affiliate: true,
+      },
+    ]);
   });
 });
 
