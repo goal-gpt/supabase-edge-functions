@@ -1,4 +1,4 @@
-import { assertEquals } from "testing/asserts.ts";
+import { assertEquals, assertRejects } from "testing/asserts.ts";
 import {
   assertSpyCallArgs,
   assertSpyCalls,
@@ -127,6 +127,7 @@ Deno.test("scrapeAndSaveLink function", async (t) => {
     assertEquals(fetchStub.calls.length, 0);
     assertEquals(response, { data: [{ id: contentId } as ContentRow] });
     sinon.restore();
+    fetchStub.restore();
   });
 
   await t.step("saves content with affiliate input", async () => {
@@ -165,6 +166,45 @@ Deno.test("scrapeAndSaveLink function", async (t) => {
         affiliate: true,
       },
     ]);
+  });
+
+  await t.step("does not save when body is empty", async () => {
+    const fetchStub = stub(
+      window,
+      "fetch",
+      returnsNext([Promise.resolve(new Response(""))]),
+    );
+    const supabaseClientStub = sinon.createStubInstance(SupabaseClient);
+    const url = "https://example.com";
+    const userId = "testUserId";
+    const contentId = 1;
+    const rawContent = "";
+    const title = "Test Title";
+    const requestMock: ConnorRequest = {
+      url: url,
+      userId: userId,
+      rawContent: rawContent,
+      shareable: false,
+      title: title,
+      affiliate: true,
+    };
+    const selectStub = sinon.stub().returns(
+      Promise.resolve({ data: [{ id: contentId }] }),
+    );
+    const insertStub = sinon.stub().returns({ select: selectStub });
+    supabaseClientStub.from.returns({ insert: insertStub });
+
+    await assertRejects(
+      async () => {
+        return await _contentInternals.scrapeAndSaveLink(
+          supabaseClientStub,
+          requestMock,
+        );
+      },
+      Error,
+      "Scraped body is empty",
+    );
+    fetchStub.restore();
   });
 });
 
@@ -233,8 +273,6 @@ Deno.test("fetchAndSaveContentChunks function", async () => {
   sinon.assert.calledWith(equalStub.firstCall, "id", contentId);
   sinon.assert.calledWith(equalStub.secondCall, "content", contentId);
   sinon.assert.calledTwice(insertStub);
-  console.log("huh!");
-  console.log(insertStub);
   sinon.assert.calledWith(insertStub.firstCall, [
     {
       content: contentId,
