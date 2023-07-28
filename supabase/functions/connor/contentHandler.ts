@@ -55,9 +55,7 @@ async function scrapeAndSaveLink(
   const title = requestTitle || getScrapedTitle($);
   const body = getScrapedBody($);
 
-  console.log("Scraped body:", body, rawContent, rawContent, rawContent)
   if (body.length === 0) {
-    console.log("Scraped body:", body, rawContent, rawContent, rawContent);
     throw Error("Scraped body is empty");
   }
 
