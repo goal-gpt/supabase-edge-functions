@@ -42,18 +42,30 @@ async function scrapeAndSaveLink(
   supabaseClient: SupabaseClient<Database>,
   connorRequest: ConnorRequest,
 ): Promise<Record<"data", ContentRow[]>> {
-  const { rawContent, shareable = true, title: requestTitle, url, userId } =
-    connorRequest;
+  const {
+    rawContent,
+    shareable = true,
+    title: requestTitle,
+    url,
+    userId,
+    affiliate = false,
+  } = connorRequest;
   const html = rawContent ? rawContent : await getHtml(url);
   const $ = cheerio.load(html);
   const title = requestTitle || getScrapedTitle($);
   const body = getScrapedBody($);
+
+  if (body.length === 0) {
+    throw Error("Scraped body is empty");
+  }
+
   const { data, error } = await saveContentToDatabase(supabaseClient, {
     url,
     title,
     rawContent: body,
     userId,
     shareable,
+    affiliate,
   });
 
   if (error) {

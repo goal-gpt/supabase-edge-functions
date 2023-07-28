@@ -10,6 +10,7 @@ export interface ConnorRequest {
   rawContent?: string;
   shareable?: boolean;
   title?: string;
+  affiliate?: boolean;
 }
 
 export class Connor {
