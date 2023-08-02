@@ -70,6 +70,7 @@ export interface Database {
       }
       content: {
         Row: {
+          affiliate: boolean
           id: number
           inserted_at: string
           link: string
@@ -77,11 +78,13 @@ export interface Database {
           raw_content: string | null
           shareable: boolean | null
           source: string | null
+          summary: string | null
           title: string | null
           updated_at: string
           user_id: string | null
         }
         Insert: {
+          affiliate?: boolean
           id?: number
           inserted_at?: string
           link: string
@@ -89,11 +92,13 @@ export interface Database {
           raw_content?: string | null
           shareable?: boolean | null
           source?: string | null
+          summary?: string | null
           title?: string | null
           updated_at?: string
           user_id?: string | null
         }
         Update: {
+          affiliate?: boolean
           id?: number
           inserted_at?: string
           link?: string
@@ -101,6 +106,7 @@ export interface Database {
           raw_content?: string | null
           shareable?: boolean | null
           source?: string | null
+          summary?: string | null
           title?: string | null
           updated_at?: string
           user_id?: string | null
@@ -156,29 +162,26 @@ export interface Database {
       }
       plan: {
         Row: {
-          id: number
+          goal: string | null
+          id: string
           inserted_at: string
-          status: string | null
           steps: Json | null
-          title: string | null
           updated_at: string
           user_id: string | null
         }
         Insert: {
-          id?: number
+          goal?: string | null
+          id?: string
           inserted_at?: string
-          status?: string | null
           steps?: Json | null
-          title?: string | null
           updated_at?: string
           user_id?: string | null
         }
         Update: {
-          id?: number
+          goal?: string | null
+          id?: string
           inserted_at?: string
-          status?: string | null
           steps?: Json | null
-          title?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -229,6 +232,40 @@ export interface Database {
           {
             foreignKeyName: "profile_id_fkey"
             columns: ["id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      subscriber: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          is_subscribed: boolean
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          is_subscribed?: boolean
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          is_subscribed?: boolean
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriber_user_id_fkey"
+            columns: ["user_id"]
             referencedRelation: "users"
             referencedColumns: ["id"]
           }
