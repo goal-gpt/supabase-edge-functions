@@ -58,9 +58,10 @@ export async function handleRequest(
     supabaseClient,
     messages,
   );
-  const { links, text: contextDocuments } = _llmInternals.truncateDocuments(
-    rawDocuments,
-  );
+  const { text: contextDocuments } = _llmInternals
+    .truncateDocuments(
+      rawDocuments,
+    );
 
   const systemMessageMessages = _llmInternals.getMessagesForSystemMessage(
     messages,
@@ -87,32 +88,13 @@ export async function handleRequest(
     planResponse,
   );
 
-  // Embed links in the plan descriptions
-  const linksInActionJson = await _internals.addLinksToActions(
-    modelsContext,
-    supabaseClient,
-    planResponseJson,
-  );
-
-  const planMessage = new FunctionChatMessage(
-    JSON.stringify(linksInActionJson, null, 2),
-    planResponse.name || "",
-  );
-
-  messages.push(planMessage);
-  await _supabaseClientInternals.createChatLine(
-    supabaseClient,
-    planMessage,
-    chat,
-  );
-
   // Prepare the SeraResponse
   const response: SeraResponse = { chat, text: planResponseJson.text || "" };
   if (Object.keys(planResponseJson).length > 0) {
     const { text: _text, ...rest } = planResponseJson;
     response.plan = { ...rest };
   }
-  if (links) response.links = links;
+
   console.log("Response: ", JSON.stringify(response, null, 2));
   return response;
 }
@@ -136,6 +118,7 @@ async function embedAndGetSimilarDocuments(
   return documents;
 }
 
+// TODO: determine if this is needed
 async function addLinksToActions(
   modelsContext: ModelsContext,
   supabaseClient: SupabaseClient<Database>,
