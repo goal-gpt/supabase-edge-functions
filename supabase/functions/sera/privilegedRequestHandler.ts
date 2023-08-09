@@ -94,6 +94,11 @@ export async function handleRequest(
     response.plan = { ...rest };
   }
 
+  console.log("Sending messages and seraResponse to Wesley");
+  supabaseClient.functions.invoke("wesley", {
+    body: JSON.stringify({ messages: messages, plan: response.plan }),
+  });
+
   console.log("Response: ", JSON.stringify(response, null, 2));
   return response;
 }

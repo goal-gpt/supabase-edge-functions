@@ -13,29 +13,6 @@ serve(async (request: Request) => {
     const seraRequest = await request.json();
     const responseFromSera = await sera.handleRequest(seraRequest);
 
-    // const body = new ReadableStream({
-    //   async start(controller) {
-    //     const encoder = new TextEncoder();
-    //     const seraResponse = await sera
-    //       .handleRequest(
-    //         seraRequest,
-    //       );
-    //     const text = JSON.stringify(seraResponse);
-
-    //     // Convert text to Uint8Array
-    //     const data = encoder.encode(text);
-
-    //     // Push data into the stream
-    //     console.log(
-    //       `Enqueuing seraResponse:`,
-    //       JSON.stringify(seraResponse, null, 2),
-    //     );
-    //     controller.enqueue(data);
-
-    //     controller.close();
-    //   },
-    // });
-
     return new Response(JSON.stringify(responseFromSera), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
