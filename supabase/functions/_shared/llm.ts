@@ -102,26 +102,21 @@ export async function getChatCompletion(
   return await model.call(messages);
 }
 
-export async function getSystemMessage(
-  premise: string,
-  context: string,
-  messages: BaseChatMessage[],
-): Promise<SystemChatMessage> {
-  const prompt = new PromptTemplate({
-    template:
-      '{premise}\nContext:\n###{context}###\nMessages:\n"""\n{messages}\n"""',
-    inputVariables: [
-      "premise",
-      "context",
-      "messages",
-    ],
-  });
-
+export function getMessagesForSystemMessage(messages: BaseChatMessage[]) {
   const mappedMessages = messages.map((m) => m._getType() + ": " + m.text);
+  return mappedMessages.join("\n");
+}
+
+export async function getSystemMessage(
+  prompt: PromptTemplate,
+  premise: string,
+  internalData: string,
+  externalData: string,
+): Promise<SystemChatMessage> {
   const input = await prompt.format({
     premise,
-    context,
-    messages: mappedMessages.join("\n"),
+    internal_data: internalData,
+    external_data: externalData,
   });
   return new SystemChatMessage(input);
 }
@@ -163,6 +158,7 @@ export const _internals = {
   getChunkedDocuments,
   getEmbeddingString,
   getEmbeddingsOpenAI,
+  getMessagesForSystemMessage,
   getPredictedFunctionInputs,
   getSystemMessage,
   getTextSplitter,

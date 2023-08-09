@@ -3,7 +3,6 @@ import { SeraRequest, SeraResponse } from "./sera.ts";
 import {
   _internals as _llmInternals,
   BaseChatMessage,
-  FunctionChatMessage,
   HumanChatMessage,
   ModelsContext,
   OpenAIEmbeddings,
@@ -15,6 +14,8 @@ import {
   PLAN_PREMISE,
   PLAN_SCHEMA,
   PLAN_SCHEMA_NAME,
+  TEMPLATE_FOR_ACTION_REQUEST,
+  TEMPLATE_FOR_PLAN_REQUEST,
 } from "../_shared/plan.ts";
 import {
   _internals as _supabaseClientInternals,
@@ -56,14 +57,19 @@ export async function handleRequest(
     supabaseClient,
     messages,
   );
-  const { links, text: contextDocuments } = _llmInternals.truncateDocuments(
-    rawDocuments,
-  );
+  const { text: contextDocuments } = _llmInternals
+    .truncateDocuments(
+      rawDocuments,
+    );
 
+  const systemMessageMessages = _llmInternals.getMessagesForSystemMessage(
+    messages,
+  );
   const planRequestMessage = await _llmInternals.getSystemMessage(
+    TEMPLATE_FOR_PLAN_REQUEST,
     PLAN_PREMISE,
     contextDocuments,
-    messages,
+    systemMessageMessages,
   );
 
   console.log("Calling OpenAI to get plan", planRequestMessage);
@@ -81,33 +87,14 @@ export async function handleRequest(
     planResponse,
   );
 
-  // Embed links in the plan descriptions
-  const linksInActionJson = await _internals.addLinksToActions(
-    modelsContext,
-    supabaseClient,
-    planResponseJson,
-  );
-
-  const planMessage = new FunctionChatMessage(
-    JSON.stringify(linksInActionJson, null, 2),
-    planResponse.name || "",
-  );
-
-  messages.push(planMessage);
-  await _supabaseClientInternals.createChatLine(
-    supabaseClient,
-    planMessage,
-    chat,
-  );
-
   // Prepare the SeraResponse
   const response: SeraResponse = { chat, text: planResponseJson.text || "" };
   if (Object.keys(planResponseJson).length > 0) {
     const { text: _text, ...rest } = planResponseJson;
     response.plan = { ...rest };
   }
-  if (links) response.links = links;
-  console.log("Response: ", response);
+
+  console.log("Response: ", JSON.stringify(response, null, 2));
   return response;
 }
 
@@ -130,6 +117,7 @@ async function embedAndGetSimilarDocuments(
   return documents;
 }
 
+// TODO: determine if this is needed
 async function addLinksToActions(
   modelsContext: ModelsContext,
   supabaseClient: SupabaseClient<Database>,
@@ -176,9 +164,10 @@ async function addLinksToText(
   );
   const { text: contextDocuments } = _llmInternals.truncateDocuments(documents);
   const systemMessage = await _llmInternals.getSystemMessage(
+    TEMPLATE_FOR_ACTION_REQUEST,
     ACTION_PREMISE,
     contextDocuments,
-    [new SystemChatMessage(value)],
+    value,
   );
   return await _llmInternals.getChatCompletion(
     modelsContext.chat,
