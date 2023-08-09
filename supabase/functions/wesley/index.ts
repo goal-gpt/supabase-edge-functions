@@ -1,5 +1,6 @@
 import { serve } from "http/server.ts";
 import { corsHeaders } from "../_shared/cors.ts";
+import { Wesley } from "./wesley.ts";
 
 serve(async (request: Request) => {
   try {
@@ -8,6 +9,10 @@ serve(async (request: Request) => {
       "Handling request data:",
       JSON.stringify(data, null, 2),
     );
+
+    const wesley = new Wesley();
+
+    await wesley.handleRequest(data);
 
     return new Response(
       JSON.stringify("OK"),
