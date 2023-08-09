@@ -3,7 +3,6 @@ import { SeraRequest, SeraResponse } from "./sera.ts";
 import {
   _internals as _llmInternals,
   BaseChatMessage,
-  FunctionChatMessage,
   HumanChatMessage,
   ModelsContext,
   OpenAIEmbeddings,
