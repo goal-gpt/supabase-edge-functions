@@ -6,7 +6,7 @@ import { Plan } from "../_shared/plan.ts";
 import { _internals as _planDetailerInternals } from "./planDetailer.ts";
 
 export interface WesleyRequest {
-  messages: BaseChatMessage[];
+  messages: string;
   plan: Plan;
 }
 
