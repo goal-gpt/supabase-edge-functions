@@ -11,6 +11,7 @@ import {
 import {
   ACTION_PREMISE,
   GetPlanJson,
+  Plan,
   PLAN_PREMISE,
   PLAN_SCHEMA,
   PLAN_SCHEMA_NAME,
@@ -94,6 +95,9 @@ export async function handleRequest(
     response.plan = { ...rest };
   }
 
+  // Send the plan to Wesley to break down and email to the user
+  if (response.plan) sendPlanToWesley(supabaseClient, messages, response.plan);
+
   console.log("Response: ", JSON.stringify(response, null, 2));
   return response;
 }
@@ -173,6 +177,19 @@ async function addLinksToText(
     modelsContext.chat,
     [systemMessage],
   );
+}
+
+function sendPlanToWesley(
+  supabaseClient: SupabaseClient<Database>,
+  baseChatMessages: BaseChatMessage[],
+  plan: Plan,
+) {
+  console.log("Sending plan to Wesley");
+  const messages = baseChatMessages.map((v) => v.text).join("; ");
+
+  supabaseClient.functions.invoke("wesley", {
+    body: JSON.stringify({ messages: messages, plan: plan }),
+  });
 }
 
 // _internals are used for testing
