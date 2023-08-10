@@ -4,6 +4,8 @@ import {
   SystemChatMessage,
 } from "../_shared/llm.ts";
 import {
+PLAN_FOR_THE_WEEK_PREMISE,
+TEMPLATE_FOR_PLAN_FOR_THE_WEEK_REQUEST,
   TEMPLATE_FOR_WEEKLY_EMAIL_REQUEST,
   TEMPLATE_FOR_WEEKLY_PLAN_REQUEST,
   WEEKLY_EMAIL_PREMISE,
@@ -56,10 +58,31 @@ async function handleRequest(
   console.log("Response from OpenAI to ultimate goal request:", ultimateGoalResponse);
 
   const ultimateGoal = ultimateGoalResponse.text;
+
+  const planForTheWeekRequestMessage = await _llmInternals.getSystemMessage(
+    TEMPLATE_FOR_PLAN_FOR_THE_WEEK_REQUEST,
+    PLAN_FOR_THE_WEEK_PREMISE,
+    firstWeek,
+    ultimateGoal,
+  );
+  console.log(
+    "Calling OpenAI to get the plan for the week",
+    planForTheWeekRequestMessage,
+  );
+  const planForTheWeekRequestResponse = await _llmInternals.getChatCompletion(
+    modelsContext.chat,
+    [planForTheWeekRequestMessage],
+  );
+  const planForTheWeek = planForTheWeekRequestResponse.text;
+  console.log(
+    "Response from OpenAI to plan for the week request: ",
+    planForTheWeek,
+  );
+  
   const weeklyEmailRequestMessage = await _llmInternals.getSystemMessage(
     TEMPLATE_FOR_WEEKLY_EMAIL_REQUEST,
     WEEKLY_EMAIL_PREMISE,
-    firstWeek,
+    planForTheWeek,
     ultimateGoal,
   );
   console.log(
