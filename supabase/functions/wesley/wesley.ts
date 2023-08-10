@@ -1,7 +1,7 @@
 import {
   _internals as _supabaseClientInternals,
 } from "../_shared/supabaseClient.ts";
-import { _internals as _llmInternals, BaseChatMessage, ModelsContext } from "../_shared/llm.ts";
+import { _internals as _llmInternals, ModelsContext } from "../_shared/llm.ts";
 import { Plan } from "../_shared/plan.ts";
 import { _internals as _planDetailerInternals } from "./planDetailer.ts";
 

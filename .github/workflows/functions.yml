@@ -58,3 +58,7 @@ jobs:
       - name: "Deploy Connor on Supabase"
         run: |
           supabase functions deploy connor --project-ref $SUPABASE_PROJECT_ID
+
+      - name: "Deploy Wesley on Supabase"
+        run: |
+          supabase functions deploy wesley --project-ref $SUPABASE_PROJECT_ID
