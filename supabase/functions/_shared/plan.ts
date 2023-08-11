@@ -116,7 +116,13 @@ export const PLAN_FOR_THE_WEEK_PREMISE =
   `Your task is to perform the following actions: ` +
   `1. Add 1-2 activities to Week 1 of the program, delimited by ###, that are very specific to the client's ultimate goal, delimited by """. ` +
   `2. Rewrite Week 1 of the program to tell the client what they should do on day 1, day 2, etc. ` +
-  `3. Revise Week 1 of the program so that it is not overwhelming. `;
+  `3. Revise Week 1 of the program so that it is not overwhelming. ` +
+  `Do not make up any content, communities, or other resources. ` +
+  `Do not suggest that the client read, watch, listen to, follow, enroll in, or participate in any content, communities, or other resources that are made up. ` +
+  `Do not suggest any specific content, communities, or other resources. ` +
+  `Do not suggest that the client read, watch, listen to, follow, enroll in, or participate in multiple content, communities, or other resources in a single activity; for example, say "Read a book about <topic>" instead of "Read books about <topic>", say "Continue reading the book about <topic>" instead of "Continue reading books about <topic>", and say "Join an online forum" instead of "Join online forums".` +
+  `Do not suggest reading more than 1 book per week. ` +
+  `Do not name any specific products, apps, platforms, or companies. Do not mention Mint or YNAB.`;
 
 export const TEMPLATE_FOR_PLAN_FOR_THE_WEEK_REQUEST = new PromptTemplate({
   template:
