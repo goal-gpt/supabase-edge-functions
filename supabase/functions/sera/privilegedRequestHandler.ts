@@ -5,7 +5,6 @@ import {
   BaseChatMessage,
   HumanChatMessage,
   ModelsContext,
-  OpenAIEmbeddings,
   SystemChatMessage,
 } from "../_shared/llm.ts";
 import {
@@ -20,7 +19,6 @@ import {
 } from "../_shared/plan.ts";
 import {
   _internals as _supabaseClientInternals,
-  MatchDocumentsResponse,
   SupabaseClient,
 } from "../_shared/supabaseClient.ts";
 
@@ -52,12 +50,14 @@ export async function handleRequest(
     humanChatMessage,
     chat,
   );
-
-  const rawDocuments = await _internals.embedAndGetSimilarDocuments(
+  
+  const lastMessages = messages.slice(-5).map((v) => v.text).join(" ");
+  const rawDocuments = await _llmInternals.embedAndGetSimilarDocuments(
     modelsContext.embed,
     supabaseClient,
-    messages,
+    lastMessages,
   );
+
   const { text: contextDocuments } = _llmInternals
     .truncateDocuments(
       rawDocuments,
@@ -102,25 +102,6 @@ export async function handleRequest(
   return response;
 }
 
-async function embedAndGetSimilarDocuments(
-  model: OpenAIEmbeddings,
-  supabaseClient: SupabaseClient<Database>,
-  messages: BaseChatMessage[],
-): Promise<MatchDocumentsResponse> {
-  const lastMessages = messages.slice(-5).map((v) => v.text).join(" ");
-  const embeddingString = await _llmInternals.getEmbeddingString(
-    model,
-    lastMessages,
-  );
-  const documents = await _supabaseClientInternals.getSimilarDocuments(
-    supabaseClient,
-    embeddingString,
-    0.78,
-    10,
-  );
-  return documents;
-}
-
 // TODO: determine if this is needed
 async function addLinksToActions(
   modelsContext: ModelsContext,
@@ -161,10 +142,10 @@ async function addLinksToText(
   supabaseClient: SupabaseClient<Database>,
   value: string,
 ): Promise<SystemChatMessage> {
-  const documents = await _internals.embedAndGetSimilarDocuments(
+  const documents = await _llmInternals.embedAndGetSimilarDocuments(
     modelsContext.embed,
     supabaseClient,
-    [new SystemChatMessage(value)],
+    value,
   );
   const { text: contextDocuments } = _llmInternals.truncateDocuments(documents);
   const systemMessage = await _llmInternals.getSystemMessage(
@@ -196,6 +177,5 @@ function sendPlanToWesley(
 export const _internals = {
   addLinksToActions,
   addLinksToText,
-  embedAndGetSimilarDocuments,
   handleRequest,
 };

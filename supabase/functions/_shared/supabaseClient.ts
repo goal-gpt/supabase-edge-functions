@@ -35,6 +35,11 @@ export interface InsertResponse {
   data?: null;
 }
 
+export interface ContentItem {
+  title: string;
+  link: string;
+}
+
 export type MatchDocumentsResponse =
   Database["public"]["Functions"]["match_documents"]["Returns"];
 export type ContentRow = Database["public"]["Tables"]["content"]["Row"];
@@ -141,6 +146,62 @@ export async function getSimilarDocuments(
   return documents;
 }
 
+function convertAndSortByCountAndSimilarity(
+  documents: MatchDocumentsResponse,
+  contentItemsThreshold: number,
+): ContentItem[] {
+  console.log(`Finding the most relevant content items...`);
+  const titleMap: {
+    [key: string]: { totalSimilarity: number; count: number; link: string };
+  } = {};
+
+  // First, let's map out all titles and calculate the total similarity and count for each
+  documents.forEach((document) => {
+    if (!titleMap[document.title]) {
+      titleMap[document.title] = {
+        totalSimilarity: 0,
+        count: 0,
+        link: document.link,
+      };
+    }
+    titleMap[document.title].totalSimilarity += document.similarity;
+    titleMap[document.title].count += 1;
+  });
+
+  // Convert the map into an array of ContentItems, but with additional info: count and avgSimilarity
+  const tempArray = Object.keys(titleMap).map((title) => {
+    const info = titleMap[title];
+    return {
+      title: title,
+      link: info.link,
+      count: info.count,
+      avgSimilarity: info.totalSimilarity / info.count,
+    };
+  });
+
+  // Finally, let's sort by count and average similarity and map back to ContentItem
+  const aggregatedAndSortedItems = tempArray.sort((a, b) => {
+    if (a.count !== b.count) {
+      return b.count - a.count; // sort by count descending
+    }
+    return b.avgSimilarity - a.avgSimilarity; // then by avgSimilarity descending
+  });
+
+  const logThreshold = 20;
+
+  console.log(`Aggregated and sorted items (logging the top items, up to 20): ${JSON.stringify(aggregatedAndSortedItems.slice(0, logThreshold), null, 2)}`);
+
+  console.log(`Getting top content items (up to ${contentItemsThreshold})...`);
+  const contentItems = aggregatedAndSortedItems.slice(0, contentItemsThreshold).map((item) => {
+    return {
+      title: item.title,
+      link: item.link,
+    };
+  });
+
+  return contentItems;
+}
+
 async function getAllChatLines(
   supabaseClient: SupabaseClient<Database>,
   chat: number,
@@ -227,6 +288,7 @@ async function createChat(
 
 // _internals are used for testing
 export const _internals = {
+  convertAndSortByCountAndSimilarity,
   createClient,
   createChat,
   createChatLine,
