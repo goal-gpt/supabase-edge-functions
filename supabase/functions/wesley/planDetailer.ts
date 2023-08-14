@@ -1,6 +1,7 @@
 import {
   _internals as _llmInternals,
   ModelsContext,
+  OpenAIEmbeddings,
   SystemChatMessage,
 } from "../_shared/llm.ts";
 import {
@@ -12,9 +13,16 @@ import {
   WEEKLY_PLAN_PREMISE,
 } from "../_shared/plan.ts";
 import { WesleyRequest } from "./wesley.ts";
+import {
+  _internals as _supabaseClientInternals,
+  ContentItem,
+  SupabaseClient,
+} from "../_shared/supabaseClient.ts";
+import { Database } from "../../types/supabase.ts";
 
 async function handleRequest(
   modelsContext: ModelsContext,
+  supabaseClient: SupabaseClient<Database>,
   wesleyRequest: WesleyRequest,
 ) {
   console.log("Handling request:", wesleyRequest);
@@ -79,15 +87,29 @@ async function handleRequest(
     [planForTheWeekRequestMessage],
   );
   const planForTheWeek = planForTheWeekRequestResponse.text;
+
   console.log(
     "Response from OpenAI to plan for the week request: ",
     planForTheWeek,
   );
 
+  const suggestedReadings = await getContentItemsForPlan(
+    modelsContext.embed,
+    supabaseClient,
+    planForTheWeek,
+    4, // threshold of content items to return; 4 is semi-arbitrary, as 1 less than 5 (the number of weekdays)
+  );
+  console.log(
+    `Suggested readings: ${JSON.stringify(suggestedReadings, null, 2)}`,
+  );
+
   const weeklyEmailRequestMessage = await _llmInternals.getSystemMessage(
     TEMPLATE_FOR_WEEKLY_EMAIL_REQUEST,
     WEEKLY_EMAIL_PREMISE,
-    planForTheWeek,
+    JSON.stringify({
+      plan: planForTheWeek,
+      suggestedReadings: suggestedReadings,
+    }),
     ultimateGoal,
   );
   console.log(
@@ -120,6 +142,33 @@ async function handleRequest(
 
   const data = await emailResponse.json();
   console.log("Response from Resend:", JSON.stringify(data, null, 2));
+}
+
+async function getContentItemsForPlan(
+  model: OpenAIEmbeddings,
+  supabaseClient: SupabaseClient<Database>,
+  planForTheWeek: string,
+  contentItemsThreshold: number,
+): Promise<ContentItem[]> {
+  console.log(
+    "Calling _llmInternals.embedAndGetSimilarDocuments...",
+  );
+  const documents = await _llmInternals.embedAndGetSimilarDocuments(
+    model,
+    supabaseClient,
+    planForTheWeek,
+    1000,
+  );
+
+  console.log(`Found ${documents.length} similar documents...`);
+  console.log(
+    "Calling _supabaseClientInternals.convertAndSortByCountAndSimilarity for the documents...",
+  );
+
+  const contentItems = _supabaseClientInternals
+    .convertAndSortByCountAndSimilarity(documents, contentItemsThreshold);
+
+  return contentItems;
 }
 
 // _internals are used for testing

@@ -18,9 +18,11 @@ export class Wesley {
       embed: _llmInternals.getEmbeddingsOpenAI(),
       splitter: _llmInternals.getTextSplitter(),
     };
+    const supabaseClient = _supabaseClientInternals.createClient();
 
     await _planDetailerInternals.handleRequest(
       modelsContext,
+      supabaseClient,
       wesleyRequest,
     );
   }

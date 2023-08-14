@@ -14,7 +14,12 @@ import {
 import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
 import { PromptTemplate } from "langchain/prompts";
 import GPT3Tokenizer from "tokenizer";
-import { MatchDocumentsResponse } from "./supabaseClient.ts";
+import {
+  _internals as _supabaseClientInternals,
+  MatchDocumentsResponse,
+  SupabaseClient,
+} from "../_shared/supabaseClient.ts";
+import { Database } from "../../types/supabase.ts";
 
 export type ModelsContext = {
   chat: ChatOpenAI;
@@ -51,6 +56,28 @@ export function getTextSplitter(
     chunkSize: chunkSize,
     chunkOverlap: chunkOverlap,
   });
+}
+
+async function embedAndGetSimilarDocuments(
+  model: OpenAIEmbeddings,
+  supabaseClient: SupabaseClient<Database>,
+  embeddable: string,
+  matchCount = 10,
+): Promise<MatchDocumentsResponse> {
+  const embeddingString = await _internals.getEmbeddingString(
+    model,
+    embeddable,
+  );
+
+  console.log(`Getting up to ${matchCount} similar documents for embedding...`);
+
+  const documents = await _supabaseClientInternals.getSimilarDocuments(
+    supabaseClient,
+    embeddingString,
+    0.78,
+    matchCount,
+  );
+  return documents;
 }
 
 export async function getEmbeddingString(
@@ -153,6 +180,7 @@ export function cleanJsonResponse(
 // _internals are used for testing
 export const _internals = {
   cleanJsonResponse,
+  embedAndGetSimilarDocuments,
   getChatCompletion,
   getChatOpenAI,
   getChunkedDocuments,
