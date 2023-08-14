@@ -146,7 +146,8 @@ export const WEEKLY_EMAIL_PREMISE =
   `3. Add a small number of emojis to make the email more engaging. ` +
   `4. Do not address the client by name in the email because that information is not available. ` +
   `5. Always write "eras" in lowercase, bold, and black in the email. ` +
-  `6. Return your response as HTML.`;
+  `6. Before ending the email, invite the client to pay GBP 3 for the next week of the program and include a button with the text "Pay for Week 2" and the link, "https://buy.stripe.com/dR62c5flt9nu8qk3cc". ` +
+  `7. Return your response as HTML.`;
 
 export const TEMPLATE_FOR_WEEKLY_EMAIL_REQUEST = new PromptTemplate({
   template:
