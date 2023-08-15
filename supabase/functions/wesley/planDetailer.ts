@@ -93,14 +93,14 @@ async function handleRequest(
     planForTheWeek,
   );
 
-  const suggestedReadings = await getContentItemsForPlan(
+  const recommendedResources = await getContentItemsForPlan(
     modelsContext.embed,
     supabaseClient,
     planForTheWeek,
     4, // threshold of content items to return; 4 is semi-arbitrary, as 1 less than 5 (the number of weekdays)
   );
   console.log(
-    `Suggested readings: ${JSON.stringify(suggestedReadings, null, 2)}`,
+    `Recommended resources: ${JSON.stringify(recommendedResources, null, 2)}`,
   );
 
   const weeklyEmailRequestMessage = await _llmInternals.getSystemMessage(
@@ -108,10 +108,11 @@ async function handleRequest(
     WEEKLY_EMAIL_PREMISE,
     JSON.stringify({
       plan: planForTheWeek,
-      suggestedReadings: suggestedReadings,
+      recommendedResources: recommendedResources,
     }),
     ultimateGoal,
   );
+
   console.log(
     "Calling OpenAI to get the weekly email",
     weeklyEmailRequestMessage,
