@@ -3,6 +3,7 @@ import { SeraRequest, SeraResponse } from "./sera.ts";
 import {
   _internals as _llmInternals,
   BaseChatMessage,
+  FunctionChatMessage,
   HumanChatMessage,
   ModelsContext,
   SystemChatMessage,
@@ -50,7 +51,7 @@ export async function handleRequest(
     humanChatMessage,
     chat,
   );
-  
+
   const lastMessages = messages.slice(-5).map((v) => v.text).join(" ");
   const rawDocuments = await _llmInternals.embedAndGetSimilarDocuments(
     modelsContext.embed,
@@ -88,6 +89,17 @@ export async function handleRequest(
     planResponse,
   );
 
+  const planMessage = new FunctionChatMessage(
+    JSON.stringify(planResponseJson, null, 2),
+    planResponse.name || "",
+  );
+
+  messages.push(planMessage);
+  await _supabaseClientInternals.createChatLine(
+    supabaseClient,
+    planMessage,
+    chat,
+  );
   // Prepare the SeraResponse
   const response: SeraResponse = { chat, text: planResponseJson.text || "" };
   if (Object.keys(planResponseJson).length > 0) {

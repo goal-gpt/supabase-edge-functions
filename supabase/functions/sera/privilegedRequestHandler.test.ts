@@ -115,7 +115,7 @@ Deno.test("handleRequest", async (t) => {
         );
 
       assertSpyCalls(createChatStub, 1);
-      assertSpyCalls(createChatLineStub, 1);
+      assertSpyCalls(createChatLineStub, 2);
       assertEquals(seraResponse.chat, chat);
       assertStringIncludes(seraResponse.text, "To plan a wedding");
       assertEquals(seraResponse.plan!.goal, "Plan a wedding");
