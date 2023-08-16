@@ -6,6 +6,7 @@ import {
 } from "../_shared/llm.ts";
 import {
   PLAN_FOR_THE_WEEK_PREMISE,
+  STRIPE_PAYMENT_LINK,
   TEMPLATE_FOR_PLAN_FOR_THE_WEEK_REQUEST,
   TEMPLATE_FOR_WEEKLY_EMAIL_REQUEST,
   TEMPLATE_FOR_WEEKLY_PLAN_REQUEST,
@@ -93,14 +94,14 @@ async function handleRequest(
   //   planForTheWeek,
   // );
 
-  // const recommendedResources = await getContentItemsForPlan(
+  // const suggestedResources = await getContentItemsForPlan(
   //   modelsContext.embed,
   //   supabaseClient,
   //   planForTheWeek,
   //   4, // threshold of content items to return; 4 is semi-arbitrary, as 1 less than 5 (the number of weekdays)
   // );
   // console.log(
-  //   `Recommended resources: ${JSON.stringify(recommendedResources, null, 2)}`,
+  //   `Recommended resources: ${JSON.stringify(suggestedResources, null, 2)}`,
   // );
 
   // const weeklyEmailRequestMessage = await _llmInternals.getSystemMessage(
@@ -112,32 +113,45 @@ async function handleRequest(
   //   }),
   //   ultimateGoal,
   // );
-
-  // console.log(
-  //   "Calling OpenAI to get the weekly email",
-  //   weeklyEmailRequestMessage,
-  // );
+  const suggestedResources = [
+    {
+      "title": "How To Become A Financial Advisor As A Career Changer",
+      "link":
+        "https://www.kitces.com/blog/become-financial-advisor-planner-career-changer-education-training-cost-timeline-transition-plan/",
+    },
+    {
+      "title": "Creating Your Career Change Budget: 10 Tips | FlexJobs",
+      "link": "https://www.flexjobs.com/blog/post/career-change-budget/",
+    },
+    {
+      "title":
+        "How To Finance Your Career Change: The Complete Guide (With Real-life Stories And Honest Numbers) | Careershifters",
+      "link":
+        "https://www.careershifters.org/expert-advice/how-to-finance-your-career-change",
+    },
+    {
+      "title": "How to Afford a Career Change (Without Struggling!) - Unmudl",
+      "link": "https://unmudl.com/blog/affording-career-change",
+    },
+  ];
   const weeklyEmailRequestMessage = new SystemChatMessage(
-    `You \are an empathetic, emotionally-aware, and imaginative AI coaching app called "eras". ` +
-    `You have already prepared a personalized 12 - week program for a client. ` +
-    `Your task is to write an email to the client about the first week of the program, delimited by ###, ` +
-    `by perform the following actions: 1. Write a friendly HTML email from the eras team to the client that: ` +
-    `a.introduces them to eras and the program; ` +
-    `b.explains that the program is customized to them; ` +
-    `c.explains how the program will help them achieve their goal, delimited by """; ` +
-    `d.includes the plan from the first week of the program; and ` +
-    `e.lists the suggested resources from the first week of the program under the heading "Suggested Resources". ` +
-    `2. Add the following inspirational quote from James Clear\'s "Atomic Habits" to the email: ` +
-    `"Every action you take is a vote for the person you wish to become." ` +
-    `3. Add a small number of emojis to make the email more engaging. ` +
-    `4. Do not address the client by name in the email because that information is not available. ` +
-    `5. Before ending the email, invite the client to pay GBP 3 for the next week of the program and include a button with: ` +
-    `a. border-radius: 6px; b. background-color: #77b5fb; ` +
-    `c. text: "Pay for Week 2"; and d. link: "https://buy.stripe.com/dR62c5flt9nu8qk3cc". ` +
-    `6. Return your response as HTML.\n` +
-    `7. Always write "eras" in lowercase, bold, and black in the email. ` +
-    `8. Make all headings black.\n` +
-    `Week 1: \n###{ "plan": "Week 1: Researching the Freelance Recruitment Consultant or Headhunter Industry in Spain\\n\\nDay 1:\\n- Read books and articles about the freelance recruitment consultant or headhunter industry\\n- Spend 30 minutes researching online to find reputable books and articles on the topic\\n\\nDay 2:\\n- Attend industry conferences and events to network with professionals in the field\\n- Research upcoming conferences and events in your area or online, and mark them on your calendar\\n\\nDay 3:\\n- Join online forums and communities to connect with experienced freelance recruitment consultants or headhunters\\n- Spend 30 minutes searching for online forums and communities related to freelance recruitment consulting or headhunting, and join one that resonates with you\\n\\nDay 4:\\n- Create a list of potential clients and companies to target for your services\\n- Spend 30 minutes brainstorming and researching potential clients and companies that align with your interests and expertise\\n\\nDay 5:\\n- Reflect on your progress and experiences from the week\\n- Take 10 minutes to journal about what you\'ve learned so far and any insights or ideas that have come up\\n\\nDay 6 and Day 7:\\n- Take a break and engage in self-care activities that recharge you for the upcoming week. This could include hobbies, spending time with loved ones, or practicing mindfulness. Remember to prioritize your well-being throughout this journey.\\n\\n###\\n\\nClient\'s Ultimate Goal:\\n\\"\\"\\"\\nThe ultimate goal is to change careers and become a self - employed freelance recruitment consultant or headhunter, starting to earn money in this role within the next 6 months, and seeking assistance in creating a plan and budget to get started.\\n\\"\\"\\"\\n\\nAdditional Activity 1: Exploring the Freelance Recruitment Consultant or Headhunter Market\\n- Spend 30 minutes researching the current demand for freelance recruitment consultants or headhunters in your target market. Look for trends, growth opportunities, and potential challenges.\\n\\nAdditional Activity 2: Identifying Transferable Skills and Expertise\\n- Take some time to reflect on your current skills and expertise that can be transferred to the freelance recruitment consultant or headhunter role. Write down a list of these skills and think about how they can be valuable in your new career.", "suggestedResources": [{ "title": "How To Become A Financial Advisor As A Career Changer", "link": "https://www.kitces.com/blog/become-financial-advisor-planner-career-changer-education-training-cost-timeline-transition-plan/" }, { "title": "How to Make Money as a Freelance Recruiter - Vital Dollar", "link": "https://vitaldollar.com/freelance-recruiter/" }, { "title": "How to Become a Freelance Recruiter in 2023", "link": "https://www.manatal.com/blog/freelance-recruiter" }, { "title": "How To Finance Your Career Change: The Complete Guide (With Real-life Stories And Honest Numbers) | Careershifters", "link": "https://www.careershifters.org/expert-advice/how-to-finance-your-career-change" }] }###\nClient\'s Ultimate Goal:\n"""\nThe ultimate goal is to change careers and become a self-employed freelance recruitment consultant or headhunter, starting to earn money in this role within the next 6 months, and seeking assistance in creating a plan and budget to get started.\n"""`,
+    `You are an AI financial coaching app called "eras". You are empathetic, emotionally-aware, and imaginative. ` +
+      `You have already prepared a personalized 12 - week program for a client.Your task is to write an email to the client ` +
+      `about the first week of the program, delimited by ###, by perform the following actions: 1. Write a friendly HTML email ` +
+      `from the eras team to the client that: a.introduces them to eras and the program; b.explains that the program is ` +
+      `customized to them; c.explains how the program will help them achieve their goal, delimited by """; d.includes the plan ` +
+      `from the first week of the program; and e.lists the suggested resources from the first week of the program under the heading ` +
+      `"Suggested Resources". 2. Add the following motivational quote from James Clear\'s "Atomic Habits" to the email: "Every action you ` +
+      `take is a vote for the person you wish to become." 3. Add a small number of emojis to make the email more engaging. 4. ` +
+      `Do not address the client by name in the email because that information is not available. 5. Before ending the email, ` +
+      `invite the client to pay GBP 3 for the next week of the program and include a button with: a.border - radius: 6px; b.background - color: ` +
+      `#77b5fb; c.text: "Pay for Week 2"; and d.link: "https://buy.stripe.com/dR62c5flt9nu8qk3cc". 6. Return your response as HTML. ` +
+      `7. Always write "eras" in lowercase, bold, and black in the email. 8. Make all headings black.` +
+      `\nWeek 1: \n###{ "plan": "Week 1: Research and Planning\\n\\nDay 1:\\n- Research nursing programs and financial aid options. Look for nursing programs at local colleges and universities. Consider online nursing programs that offer flexibility in terms of schedule and location.\\n\\nDay 2:\\n- Create a budget and savings plan. Track your expenses and identify areas where you can reduce spending. Consider taking on a part-time job or freelance work to increase your income and save more money.\\n\\nDay 3:\\n- Explore financial assistance options. Check with local hospitals, healthcare organizations, and nursing associations for scholarship opportunities. Research national and international scholarships for nursing students.\\n\\nDay 4:\\n- Explore part-time or flexible job opportunities in the healthcare field. Search online job boards for part-time healthcare positions. Reach out to local healthcare facilities and inquire about part-time job opportunities.\\n\\nDay 5:\\n- Reflect on your research and planning progress. Take some time to think about your motivations and goals for transitioning into the healthcare field. Consider how becoming a nurse will allow you to make a more meaningful impact.\\n\\nDay 6:\\n- Review your budget and savings plan. Make any necessary adjustments and continue tracking your expenses. Look for additional ways to save money and increase your income.\\n\\nDay 7:\\n- Continue exploring financial assistance options. Reach out to nursing associations and organizations to inquire about any additional scholarship opportunities. Consider attending virtual information sessions or webinars to learn more about financial aid options for nursing students.\\n\\nClient\'s Ultimate Goal:\\n\\"The ultimate goal is to transition into the healthcare field and become a nurse in order to make a more meaningful impact.\\"", "suggestedResources": [{ "title": "How To Become A Financial Advisor As A Career Changer", "link": "https://www.kitces.com/blog/become-financial-advisor-planner-career-changer-education-training-cost-timeline-transition-plan/" }, { "title": "Creating Your Career Change Budget: 10 Tips | FlexJobs", "link": "https://www.flexjobs.com/blog/post/career-change-budget/" }, { "title": "How To Finance Your Career Change: The Complete Guide (With Real-life Stories And Honest Numbers) | Careershifters", "link": "https://www.careershifters.org/expert-advice/how-to-finance-your-career-change" }, { "title": "How to Afford a Career Change (Without Struggling!) - Unmudl", "link": "https://unmudl.com/blog/affording-career-change" }] }###\nClient\'s Ultimate Goal:\n"""\nThe ultimate goal is to transition into the healthcare field and become a nurse in order to make a more meaningful impact.\n"""`,
+  );
+  console.log(
+    "Calling OpenAI to get the weekly email",
+    weeklyEmailRequestMessage,
   );
 
   const weeklyEmailRequestResponse = await _llmInternals.getChatCompletion(
@@ -150,26 +164,37 @@ async function handleRequest(
     weeklyEmail,
   );
 
-  if (!validateWeeklyEmail(weeklyEmail)) throw new Error("Invalid weekly email");
+  const suggestedResourcesLinks = suggestedResources.map((resource) =>
+    resource.link
+  );
+  const expectedLinks = [
+    ...suggestedResourcesLinks,
+    STRIPE_PAYMENT_LINK,
+  ];
 
-  const cleanedWeeklyEmail = getCleanedWeeklyEmail(weeklyEmail);
+  if (!validateWeeklyEmail(weeklyEmail, expectedLinks)) {
+    // TODO: if the weekly email is invalid, try again
+    throw new Error("Invalid weekly email");
+  }
 
-  const emailResponse = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${Deno.env.get("RESEND_API_KEY")}`,
-    },
-    body: JSON.stringify({
-      from: "jason@eras.fyi",
-      to: "jason@eras.fyi",
-      subject: "Welcome to eras 🌅 #77b5fb spain 3",
-      html: cleanedWeeklyEmail,
-    }),
-  });
+  const cleanedWeeklyEmail = cleanWeeklyEmail(weeklyEmail);
 
-  const data = await emailResponse.json();
-  console.log("Response from Resend:", JSON.stringify(data, null, 2));
+  // const emailResponse = await fetch("https://api.resend.com/emails", {
+  //   method: "POST",
+  //   headers: {
+  //     "Content-Type": "application/json",
+  //     Authorization: `Bearer ${Deno.env.get("RESEND_API_KEY")}`,
+  //   },
+  //   body: JSON.stringify({
+  //     from: "jason@eras.fyi",
+  //     to: "jason@eras.fyi",
+  //     subject: "Welcome to eras 🌅 self-description 3",
+  //     html: cleanedWeeklyEmail,
+  //   }),
+  // });
+
+  // const data = await emailResponse.json();
+  // console.log("Response from Resend:", JSON.stringify(data, null, 2));
 }
 
 async function getContentItemsForPlan(
@@ -199,18 +224,57 @@ async function getContentItemsForPlan(
   return contentItems;
 }
 
-function validateWeeklyEmail(weeklyEmail: string): boolean {
+function validateWeeklyEmail(
+  weeklyEmail: string,
+  expectedLinks: string[],
+): boolean {
   console.log("Validating the weekly email...");
-  const isValid = weeklyEmail.includes(`href="https://buy.stripe.com/dR62c5flt9nu8qk3cc"`);
 
-  return isValid;
+  // TODO: Confirm that motivational quote appears only once
+
+  // Confirming that all links are present
+  // TODO: confirm that expected links only appear once
+
+  // Confirming that all links are present
+  const allExpectedLinksPresent: boolean = expectedLinks.every((link) =>
+    weeklyEmail.includes(link)
+  );
+  console.log("allExpectedLinksPresent: ", allExpectedLinksPresent);
+
+  // Confirming that no unexpected links are present
+  const weeklyEmailWithoutLinks = removeLinksFromWeeklyEmail(
+    weeklyEmail,
+    expectedLinks,
+  );
+  const noUnexpectedLinksPresent =
+    !(weeklyEmailWithoutLinks.includes("https://") ||
+      weeklyEmailWithoutLinks.includes("http://"));
+  console.log("noUnexpectedLinksPresent: ", noUnexpectedLinksPresent);
+
+  return allExpectedLinksPresent && noUnexpectedLinksPresent;
 }
 
-function getCleanedWeeklyEmail(weeklyEmail: string): string {
-  console.log("Cleaning up the weekly email...");
-  const cleandedWeeklyEmail = weeklyEmail.replace(new RegExp(`"""`, 'g'), '');
+function removeLinksFromWeeklyEmail(
+  weeklyEmail: string,
+  links: string[],
+): string {
+  for (const link of links) {
+    // Using a global regular expression to replace all instances of the substring
+    const regex = new RegExp(link, "g");
+    weeklyEmail = weeklyEmail.replace(regex, "");
+  }
+  return weeklyEmail;
+}
 
-  return cleandedWeeklyEmail;
+function cleanWeeklyEmail(weeklyEmail: string): string {
+  console.log("Cleaning up the weekly email...");
+  const withoutTripleQuotes = weeklyEmail.replace(new RegExp(`"""`, "g"), "");
+  const withoutTripleBackticks = withoutTripleQuotes.replace(
+    new RegExp("```", "g"),
+    "",
+  );
+
+  return withoutTripleBackticks;
 }
 
 // _internals are used for testing
