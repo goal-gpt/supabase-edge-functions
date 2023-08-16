@@ -143,14 +143,19 @@ export const WEEKLY_EMAIL_PREMISE =
   `1. Write a friendly HTML email from the eras team to the client that: ` +
   `a. introduces them to eras and the program; ` +
   `b. explains that the program is customized to them; ` +
-  `c. explains how the program will help them achieve their goal, delimited by """, ` +
+  `c. explains how the program will help them achieve their goal, delimited by """; ` +
   `d. includes the \`plan\` from the first week of the program; and ` +
   `e. lists the \`recommendedResources\` from the first week of the program as "Recommended Resources". ` +
   `2. Add the following inspirational quote from James Clear's "Atomic Habits" to the email: "Every action you take is a vote for the person you wish to become." ` +
   `3. Add a small number of emojis to make the email more engaging. ` +
   `4. Do not address the client by name in the email because that information is not available. ` +
   `5. Always write "eras" in lowercase, bold, and black in the email. ` +
-  `6. Before ending the email, invite the client to pay GBP 3 for the next week of the program and include a button with the text "Pay for Week 2" and the link, "https://buy.stripe.com/dR62c5flt9nu8qk3cc". ` +
+  `6. Before ending the email, invite the client to pay GBP 3 for the next week of the program and include a button with: ` +
+  `a. rounded corners; ` +
+  `b. the background-color #FFCB31; ` +
+  `c. the font color #ffffff; ` +
+  `d. the text "Pay for Week 2"; and ` +
+  `e. the link, "https://buy.stripe.com/dR62c5flt9nu8qk3cc". ` +
   `7. Return your response as HTML.`;
 
 export const TEMPLATE_FOR_WEEKLY_EMAIL_REQUEST = new PromptTemplate({
