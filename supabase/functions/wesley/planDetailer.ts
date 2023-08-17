@@ -27,7 +27,7 @@ async function handleRequest(
   wesleyRequest: WesleyRequest,
 ) {
   console.log("Handling request:", wesleyRequest);
-  const { messages, plan } = wesleyRequest;
+  const { messages, plan, userName } = wesleyRequest;
   const weeklyPlanRequestMessage = await _llmInternals.getSystemMessage(
     TEMPLATE_FOR_WEEKLY_PLAN_REQUEST,
     WEEKLY_PLAN_PREMISE,
@@ -114,7 +114,7 @@ async function handleRequest(
     TEMPLATE_FOR_WEEKLY_EMAIL_REQUEST,
     WEEKLY_EMAIL_PREMISE,
     JSON.stringify({
-      clientName: wesleyRequest.userName || "Jane",
+      clientName: userName || "Jane",
       plan: planForTheWeek,
       suggestedResources: suggestedResources,
       motivationalQuote: motivationalQuote,
