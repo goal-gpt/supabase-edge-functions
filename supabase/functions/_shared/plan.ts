@@ -143,21 +143,20 @@ export const WEEKLY_EMAIL_PREMISE =
   `You have already prepared a personalized 12 - week program for a client. ` +
   `Your task is to write an email to the client about the first week of the program, delimited by ###, ` +
   `by perform the following actions: 1. Write a friendly HTML email from the eras team to the client that: ` +
-  `a.introduces them to eras and the program; ` +
-  `b.explains that the program is customized to them; ` +
-  `c.explains how the program will help them achieve their goal, delimited by """; ` +
-  `d.includes the plan from the first week of the program; and ` +
-  `e.lists the suggested resources from the first week of the program under the heading "Suggested Resources". ` +
-  `2. Add the following motivational quote from James Clear\'s "Atomic Habits" to the email: ` +
-  `"Every action you take is a vote for the person you wish to become." ` +
+  `a. addresses the client; ` +
+  `b. introduces them to eras and the program; ` +
+  `c. explains that the program is customized to them; ` +
+  `d. explains how the program will help them achieve their goal, delimited by """; ` +
+  `e. includes the plan from the first week of the program; ` +
+  `f. includes the suggested resources from the first week of the program; and ` +
+  `g. includes the motivational quote with a link to the source from the first week of the program; ` +
   `3. Add a small number of emojis to make the email more engaging. ` +
-  `4. Do not address the client by name in the email because that information is not available. ` +
-  `5. Before ending the email, invite the client to pay GBP 3 for the next week of the program and include a button with: ` +
+  `4. Before ending the email, invite the client to pay GBP 3 for the next week of the program and include a button with: ` +
   `a. border-radius: 6px; b. background-color: #77b5fb; ` +
   `c. text: "Pay for Week 2"; and d. link: "${STRIPE_PAYMENT_LINK}". ` +
-  `6. Return your response as HTML. ` +
-  `7. Always write "eras" in lowercase, bold, and black in the email. ` +
-  `8. Make all headings black.`;
+  `5. Return your response as HTML. ` +
+  `6. Always write "eras" in lowercase, bold, and black in the email. ` +
+  `7. Make all headings black.`;
 
 export const TEMPLATE_FOR_WEEKLY_EMAIL_REQUEST = new PromptTemplate({
   template:

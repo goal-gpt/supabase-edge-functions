@@ -8,6 +8,7 @@ import { _internals as _planDetailerInternals } from "./planDetailer.ts";
 export interface WesleyRequest {
   messages: string;
   plan: Plan;
+  userName?: string;
 }
 
 export class Wesley {
