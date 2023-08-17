@@ -72,7 +72,7 @@ export const TEMPLATE_FOR_ACTION_REQUEST = new PromptTemplate({
 });
 
 // Mindfulness information is AI summary of https://www.newretirement.com/retirement/money-mindfulness/
-export const WEEKLY_PLAN_PREMISE =
+export const COACHING_PROGRAM_PREMISE =
   `You are an empathetic, emotionally-aware, and imaginative AI financial coach. ` +
   `Based on the messages from your client, delimited by ###, ` +
   `you have already made an action plan for the client, delimited by """. ` +
@@ -80,7 +80,6 @@ export const WEEKLY_PLAN_PREMISE =
   `Create a 12-week program that will help the client to make incremental progress towards completing the action plan. ` +
   `The goal of the action plan does not need to be achieved within the 12 weeks. ` +
   `Each week consists of 4 specific, measurable, and relevant tasks that can be completed within the week. ` +
-  // `Each week must include at least one task that is very specific to the ultimate goal of the action plan—what the client will do once they have improved their finances and financial habits. ` +
   `The tasks should incorporate mindfulness: "Money mindfulness is the conscious practice of understanding and managing one's financial situation. This includes slowing down when making financial decisions, examining feelings about those decisions, and waiting 24 hours before making significant purchases. Mindfulness also involves regular financial planning, such as reading about personal finance, attending workshops, and taking online courses on budgeting, investing, and debt management. Being aware of emotions that can lead to risky or impulsive decisions, focusing on both short-term and long-term impacts, exploring personal financial biases, and seeking diverse perspectives are all essential to this approach. Regular self-check-ins and written observations can help create a secure financial future, and an open-minded approach can allow for a well-rounded understanding of financial options."` +
   `The tasks should reflect the messages from the client—do not include tasks that the client has already performed. ` +
   `Return your response in the following format:` +
@@ -100,7 +99,7 @@ export const WEEKLY_PLAN_PREMISE =
 // Add something to make the first week special/specific to the client
 // Consider adding the Atomic Habits cheat sheet here or in the per-week-breakdown
 
-export const TEMPLATE_FOR_WEEKLY_PLAN_REQUEST = new PromptTemplate({
+export const TEMPLATE_FOR_COACHING_PROGRAM_REQUEST = new PromptTemplate({
   template:
     '{premise}\nClient Messages:\n###{internal_data}###\nAction Plan:\n"""\n{external_data}\n"""',
   inputVariables: [
@@ -115,7 +114,7 @@ export const PLAN_FOR_THE_WEEK_PREMISE =
   `You have already prepared a personalized 12-week program for a client. ` +
   `Your task is to perform the following actions: ` +
   `1. Rewrite suggestions in any activities that mention specific products, apps, platforms, or companies (like the budgeting apps "Mint" and "YNAB") to be generic. ` +
-  `2. Add 1-2 activities to Week 1 of the program, delimited by ###, that are very specific to the client's ultimate goal, delimited by """. ` +
+  `2. Add 1-2 activities to Week 1 of the program, delimited by ###, that are very specific to the client's goal, delimited by """. ` +
   `3. Rewrite Week 1 of the program to tell the client what they should do on day 1, day 2, etc. ` +
   `4. Revise Week 1 of the program so that it is not overwhelming. ` +
   `Do not make up any content, communities, or other resources. ` +
@@ -127,7 +126,7 @@ export const PLAN_FOR_THE_WEEK_PREMISE =
 
 export const TEMPLATE_FOR_PLAN_FOR_THE_WEEK_REQUEST = new PromptTemplate({
   template:
-    '{premise}\nWeek 1:\n###{internal_data}###\nClient\'s Ultimate Goal:\n"""\n{external_data}\n"""',
+    '{premise}\nWeek 1:\n###{internal_data}###\nClient\'s Goal:\n"""\n{external_data}\n"""',
   inputVariables: [
     "premise",
     "internal_data",
@@ -135,27 +134,33 @@ export const TEMPLATE_FOR_PLAN_FOR_THE_WEEK_REQUEST = new PromptTemplate({
   ],
 });
 
+export const STRIPE_PAYMENT_LINK = "https://buy.stripe.com/dR62c5flt9nu8qk3cc";
+
 export const WEEKLY_EMAIL_PREMISE =
-  `You are an empathetic, emotionally-aware, and imaginative AI coaching app called "eras". ` +
-  `You have already prepared a personalized 12-week program for a client. ` +
+  `You are an AI financial coaching app called "eras". ` +
+  `You are empathetic, emotionally-aware, and imaginative. ` +
+  `You have already determined the client's goal, delimited by """. ` +
+  `You have already prepared a personalized 12 - week program for a client based on the client's goal. ` +
   `Your task is to write an email to the client about the first week of the program, delimited by ###, ` +
-  `by perform the following actions: ` +
-  `1. Write a friendly HTML email from the eras team to the client that: ` +
-  `a. introduces them to eras and the program; ` +
-  `b. explains that the program is customized to them; ` +
-  `c. explains how the program will help them achieve their goal, delimited by """, ` +
-  `d. includes the \`plan\` from the first week of the program; and ` +
-  `e. lists the \`recommendedResources\` from the first week of the program as "Recommended Resources". ` +
-  `2. Add the following inspirational quote from James Clear's "Atomic Habits" to the email: "Every action you take is a vote for the person you wish to become." ` +
+  `by perform the following actions: 1. Write a friendly HTML email from the eras team to the client that: ` +
+  `a. addresses the client; ` +
+  `b. introduces them to eras and the program; ` +
+  `c. explains that the program is customized to them; ` +
+  `d. explains how the program will help them achieve their goal; ` +
+  `e. includes the plan from the first week of the program; ` +
+  `f. includes the suggested resources from the first week of the program; and ` +
+  `g. includes the motivational quote with a link to the source from the first week of the program; ` +
   `3. Add a small number of emojis to make the email more engaging. ` +
-  `4. Do not address the client by name in the email because that information is not available. ` +
-  `5. Always write "eras" in lowercase, bold, and black in the email. ` +
-  `6. Before ending the email, invite the client to pay GBP 3 for the next week of the program and include a button with the text "Pay for Week 2" and the link, "https://buy.stripe.com/dR62c5flt9nu8qk3cc". ` +
-  `7. Return your response as HTML.`;
+  `4. Before ending the email, invite the client to pay GBP 3 for the next week of the program and include a button with: ` +
+  `a. border-radius: 6px; b. background-color: #77b5fb; ` +
+  `c. text: "Pay for Week 2"; and d. link: "${STRIPE_PAYMENT_LINK}". ` +
+  `5. Return your response as HTML. ` +
+  `6. Always write "eras" in lowercase, bold, and black in the email. ` +
+  `7. Make all headings black.`;
 
 export const TEMPLATE_FOR_WEEKLY_EMAIL_REQUEST = new PromptTemplate({
   template:
-    '{premise}\nWeek 1:\n###{internal_data}###\nClient\'s Ultimate Goal:\n"""\n{external_data}\n"""',
+    '{premise}\nWeek 1:\n###{internal_data}###\nClient\'s Goal:\n"""\n{external_data}\n"""',
   inputVariables: [
     "premise",
     "internal_data",
