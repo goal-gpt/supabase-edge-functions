@@ -2,9 +2,9 @@ import {
   _internals as _llmInternals,
   ModelsContext,
   OpenAIEmbeddings,
-  SystemChatMessage,
 } from "../_shared/llm.ts";
 import {
+  Plan,
   PLAN_FOR_THE_WEEK_PREMISE,
   STRIPE_PAYMENT_LINK,
   TEMPLATE_FOR_PLAN_FOR_THE_WEEK_REQUEST,
@@ -26,15 +26,21 @@ async function handleRequest(
   supabaseClient: SupabaseClient<Database>,
   wesleyRequest: WesleyRequest,
 ) {
-  console.log("Handling request:", wesleyRequest);
+  // console.log("Handling request:", wesleyRequest);
   const { messages, plan, userName } = wesleyRequest;
+
+  // // Remove raw links to reduce size and scope of what is sent to OpenAI
+  emptyRawLinks(plan);
+
   const weeklyPlanRequestMessage = await _llmInternals.getSystemMessage(
     TEMPLATE_FOR_WEEKLY_PLAN_REQUEST,
     WEEKLY_PLAN_PREMISE,
     messages,
     JSON.stringify(plan),
   );
+
   console.log("Calling OpenAI to get weekly plan", weeklyPlanRequestMessage);
+
   const weeklyPlanRequestResponse = await _llmInternals.getChatCompletion(
     modelsContext.chat,
     [weeklyPlanRequestMessage],
@@ -48,34 +54,11 @@ async function handleRequest(
 
   const firstWeek = weeklyPlan.substring(0, weeklyPlan.indexOf("Week 2"));
 
-  const ultimateGoalMessage = new SystemChatMessage(
-    `Provide a concise summary in 1 sentence of the ultimate goal of someone ` +
-      `who provides the following information to a financial coach ` +
-      `once money is no longer an obstacle to their goal: "${messages}". ` +
-      `Describe only the goal. Do not mention financial constraints, money, ` +
-      `savings, debt, assets, finances, obstacles, hurdles, struggles, or ` +
-      `challenges to achieving the goal.`,
-  );
-
-  console.log("Calling OpenAI to get the ultimate goal", ultimateGoalMessage);
-
-  const ultimateGoalResponse = await _llmInternals.getChatCompletion(
-    modelsContext.chat,
-    [ultimateGoalMessage],
-  );
-
-  console.log(
-    "Response from OpenAI to ultimate goal request:",
-    ultimateGoalResponse,
-  );
-
-  const ultimateGoal = ultimateGoalResponse.text;
-
   const planForTheWeekRequestMessage = await _llmInternals.getSystemMessage(
     TEMPLATE_FOR_PLAN_FOR_THE_WEEK_REQUEST,
     PLAN_FOR_THE_WEEK_PREMISE,
     firstWeek,
-    ultimateGoal,
+    plan.goal,
   );
 
   console.log(
@@ -108,7 +91,8 @@ async function handleRequest(
     quote: "Every action you take is a vote for the person you wish to become.",
     speaker: "James Clear",
     source: "Atomic Habits",
-    link: "https://www.amazon.de/-/en/Atomic-Habits-life-changing-million-bestseller/dp/1847941834", // TODO: get this from the database
+    link:
+      "https://www.amazon.de/-/en/Atomic-Habits-life-changing-million-bestseller/dp/1847941834", // TODO: get this from the database
   };
   const weeklyEmailRequestMessage = await _llmInternals.getSystemMessage(
     TEMPLATE_FOR_WEEKLY_EMAIL_REQUEST,
@@ -119,21 +103,20 @@ async function handleRequest(
       suggestedResources: suggestedResources,
       motivationalQuote: motivationalQuote,
     }),
-    ultimateGoal,
+    plan.goal,
   );
 
   const suggestedResourcesLinks = suggestedResources.map((resource) =>
     resource.link
   );
   const expectedStrings = [
-    ...suggestedResourcesLinks,
     motivationalQuote.quote,
     motivationalQuote.link,
+    ...suggestedResourcesLinks,
     STRIPE_PAYMENT_LINK,
   ];
 
   console.log(`expectedStrings: ${JSON.stringify(expectedStrings, null, 2)}`);
-
   console.log(
     "Calling OpenAI to get the weekly email",
     weeklyEmailRequestMessage,
@@ -150,7 +133,7 @@ async function handleRequest(
   );
 
   if (!validateWeeklyEmail(weeklyEmail, expectedStrings)) {
-    // TODO: determine whether to retry when the weekly email is invalid
+    // TODO: determine whether to automatically retry when the weekly email is invalid
     throw new Error("Invalid weekly email");
   }
 
@@ -163,9 +146,9 @@ async function handleRequest(
       Authorization: `Bearer ${Deno.env.get("RESEND_API_KEY")}`,
     },
     body: JSON.stringify({
-      from: "jason@eras.fyi",
-      to: "jason@eras.fyi",
-      subject: "Welcome to eras 🌅 quote 4",
+      from: "info@eras.fyi",
+      to: "info@eras.fyi",
+      subject: "Welcome to eras 🌅",
       html: cleanedWeeklyEmail,
     }),
   });
@@ -209,23 +192,31 @@ function validateWeeklyEmail(
 
   // Confirming that each expected string appears exactly once
   console.log("Confirming that each expected string appears exactly once...");
+
   const allExpectedStringsPresent: boolean = expectedStrings.every((
     expectedString,
   ) => isExpectedStringPresentOnlyOnce(weeklyEmail, expectedString));
   console.log("allExpectedStringsPresent: ", allExpectedStringsPresent);
 
-  // Confirming that no unexpected links are present
-  console.log("Confirming that no unexpected links are present...");
-  const weeklyEmailWithoutStrings = removeStringsFromWeeklyEmail(
+  // Confirming that no bad strings are present
+  console.log("Confirming that no bad strings are present...");
+
+  const weeklyEmailWithoutExpectedStrings = removeStringsFromWeeklyEmail(
     weeklyEmail,
     expectedStrings,
   );
-  const noUnexpectedLinksPresent =
-    !(weeklyEmailWithoutStrings.includes("https://") ||
-      weeklyEmailWithoutStrings.includes("http://"));
-  console.log("noUnexpectedLinksPresent: ", noUnexpectedLinksPresent);
+  const badStrings = [
+    "https://",
+    "http://",
+    "week 3", // TODO: make dynamic based on the week
+  ];
+  const noBadStringsFound = badStrings.every((badString) =>
+    !weeklyEmailWithoutExpectedStrings.includes(badString)
+  );
 
-  return allExpectedStringsPresent && noUnexpectedLinksPresent;
+  console.log("noBadStringsFound: ", noBadStringsFound);
+
+  return allExpectedStringsPresent && noBadStringsFound;
 }
 
 function isExpectedStringPresentOnlyOnce(
@@ -271,3 +262,12 @@ function cleanWeeklyEmail(weeklyEmail: string): string {
 export const _internals = {
   handleRequest,
 };
+
+function emptyRawLinks(plan: Plan): void {
+  console.log("Emptying raw links...");
+  plan.steps.forEach((step) => {
+    if (step.action.rawLinks) {
+      step.action.rawLinks = [];
+    }
+  });
+}
