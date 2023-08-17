@@ -4,14 +4,14 @@ import {
   OpenAIEmbeddings,
 } from "../_shared/llm.ts";
 import {
+  COACHING_PROGRAM_PREMISE,
   Plan,
   PLAN_FOR_THE_WEEK_PREMISE,
   STRIPE_PAYMENT_LINK,
+  TEMPLATE_FOR_COACHING_PROGRAM_REQUEST,
   TEMPLATE_FOR_PLAN_FOR_THE_WEEK_REQUEST,
   TEMPLATE_FOR_WEEKLY_EMAIL_REQUEST,
-  TEMPLATE_FOR_WEEKLY_PLAN_REQUEST,
   WEEKLY_EMAIL_PREMISE,
-  WEEKLY_PLAN_PREMISE,
 } from "../_shared/plan.ts";
 import { WesleyRequest } from "./wesley.ts";
 import {
@@ -21,38 +21,48 @@ import {
 } from "../_shared/supabaseClient.ts";
 import { Database } from "../../types/supabase.ts";
 
+export const MOTIVATIONAL_quote =
+  "Every action you take is a vote for the person you wish to become.";
+export const MOTIVATIONAL_speaker = "James Clear";
+export const MOTIVATIONAL_source = "Atomic Habits";
+export const MOTIVATIONAL_link =
+  "https://www.amazon.de/-/en/Atomic-Habits-life-changing-million-bestseller/dp/1847941834"; // TODO: get this from the database
+
 async function handleRequest(
   modelsContext: ModelsContext,
   supabaseClient: SupabaseClient<Database>,
   wesleyRequest: WesleyRequest,
 ) {
-  // console.log("Handling request:", wesleyRequest);
+  console.log("Handling request:", wesleyRequest);
   const { messages, plan, userName } = wesleyRequest;
 
-  // // Remove raw links to reduce size and scope of what is sent to OpenAI
+  // Remove raw links to reduce size and scope of what is sent to OpenAI
   emptyRawLinks(plan);
 
-  const weeklyPlanRequestMessage = await _llmInternals.getSystemMessage(
-    TEMPLATE_FOR_WEEKLY_PLAN_REQUEST,
-    WEEKLY_PLAN_PREMISE,
+  const coachingProgramRequestMessage = await _llmInternals.getSystemMessage(
+    TEMPLATE_FOR_COACHING_PROGRAM_REQUEST,
+    COACHING_PROGRAM_PREMISE,
     messages,
     JSON.stringify(plan),
   );
 
-  console.log("Calling OpenAI to get weekly plan", weeklyPlanRequestMessage);
-
-  const weeklyPlanRequestResponse = await _llmInternals.getChatCompletion(
-    modelsContext.chat,
-    [weeklyPlanRequestMessage],
+  console.log(
+    "Calling OpenAI to get the coaching program",
+    coachingProgramRequestMessage,
   );
-  const weeklyPlan = weeklyPlanRequestResponse.text;
+
+  const coachingProgramRequestResponse = await _llmInternals.getChatCompletion(
+    modelsContext.chat,
+    [coachingProgramRequestMessage],
+  );
+  const program = coachingProgramRequestResponse.text;
 
   console.log(
-    "Response from OpenAI to weekly plan request: ",
-    weeklyPlan,
+    "Response from OpenAI to program request: ",
+    program,
   );
 
-  const firstWeek = weeklyPlan.substring(0, weeklyPlan.indexOf("Week 2"));
+  const firstWeek = program.substring(0, program.indexOf("Week 2"));
 
   const planForTheWeekRequestMessage = await _llmInternals.getSystemMessage(
     TEMPLATE_FOR_PLAN_FOR_THE_WEEK_REQUEST,
@@ -84,21 +94,21 @@ async function handleRequest(
     4, // threshold of content items to return; 4 is semi-arbitrary, as 1 less than 5 (the number of weekdays)
   );
   console.log(
-    `Recommended resources: ${JSON.stringify(suggestedResources, null, 2)}`,
+    `Suggested resources: ${JSON.stringify(suggestedResources, null, 2)}`,
   );
 
+  // TODO: make this programmatic
   const motivationalQuote = {
-    quote: "Every action you take is a vote for the person you wish to become.",
-    speaker: "James Clear",
-    source: "Atomic Habits",
-    link:
-      "https://www.amazon.de/-/en/Atomic-Habits-life-changing-million-bestseller/dp/1847941834", // TODO: get this from the database
+    quote: MOTIVATIONAL_quote,
+    speaker: MOTIVATIONAL_speaker,
+    source: MOTIVATIONAL_source,
+    link: MOTIVATIONAL_link,
   };
   const weeklyEmailRequestMessage = await _llmInternals.getSystemMessage(
     TEMPLATE_FOR_WEEKLY_EMAIL_REQUEST,
     WEEKLY_EMAIL_PREMISE,
     JSON.stringify({
-      clientName: userName || "Jane",
+      clientName: userName || "friend",
       plan: planForTheWeek,
       suggestedResources: suggestedResources,
       motivationalQuote: motivationalQuote,
@@ -109,14 +119,17 @@ async function handleRequest(
   const suggestedResourcesLinks = suggestedResources.map((resource) =>
     resource.link
   );
-  const expectedStrings = [
+  const runtimeExpectedStrings = [
     motivationalQuote.quote,
     motivationalQuote.link,
     ...suggestedResourcesLinks,
-    STRIPE_PAYMENT_LINK,
   ];
 
-  console.log(`expectedStrings: ${JSON.stringify(expectedStrings, null, 2)}`);
+  console.log(
+    `runtimeExpectedStrings: ${
+      JSON.stringify(runtimeExpectedStrings, null, 2)
+    }`,
+  );
   console.log(
     "Calling OpenAI to get the weekly email",
     weeklyEmailRequestMessage,
@@ -132,14 +145,15 @@ async function handleRequest(
     weeklyEmail,
   );
 
-  if (!validateWeeklyEmail(weeklyEmail, expectedStrings)) {
+  if (!validateWeeklyEmail(weeklyEmail, runtimeExpectedStrings)) {
     // TODO: determine whether to automatically retry when the weekly email is invalid
     throw new Error("Invalid weekly email");
   }
 
   const cleanedWeeklyEmail = cleanWeeklyEmail(weeklyEmail);
 
-  const emailResponse = await fetch("https://api.resend.com/emails", {
+  console.log("Sending weekly email to Resend...");
+  const resendResponse = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -153,7 +167,7 @@ async function handleRequest(
     }),
   });
 
-  const data = await emailResponse.json();
+  const data = await resendResponse.json();
   console.log("Response from Resend:", JSON.stringify(data, null, 2));
 }
 
@@ -186,9 +200,16 @@ async function getContentItemsForPlan(
 
 function validateWeeklyEmail(
   weeklyEmail: string,
-  expectedStrings: string[],
+  runtimeExpectedStrings: string[],
 ): boolean {
   console.log("Validating the weekly email...");
+
+  const expectedStrings = [
+    "<html>",
+    "</html>",
+    STRIPE_PAYMENT_LINK,
+    ...runtimeExpectedStrings,
+  ];
 
   // Confirming that each expected string appears exactly once
   console.log("Confirming that each expected string appears exactly once...");
@@ -258,11 +279,6 @@ function cleanWeeklyEmail(weeklyEmail: string): string {
   return withoutTripleBackticks;
 }
 
-// _internals are used for testing
-export const _internals = {
-  handleRequest,
-};
-
 function emptyRawLinks(plan: Plan): void {
   console.log("Emptying raw links...");
   plan.steps.forEach((step) => {
@@ -271,3 +287,8 @@ function emptyRawLinks(plan: Plan): void {
     }
   });
 }
+
+// _internals are used for testing
+export const _internals = {
+  handleRequest,
+};

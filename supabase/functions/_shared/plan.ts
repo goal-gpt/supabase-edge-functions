@@ -72,7 +72,7 @@ export const TEMPLATE_FOR_ACTION_REQUEST = new PromptTemplate({
 });
 
 // Mindfulness information is AI summary of https://www.newretirement.com/retirement/money-mindfulness/
-export const WEEKLY_PLAN_PREMISE =
+export const COACHING_PROGRAM_PREMISE =
   `You are an empathetic, emotionally-aware, and imaginative AI financial coach. ` +
   `Based on the messages from your client, delimited by ###, ` +
   `you have already made an action plan for the client, delimited by """. ` +
@@ -99,7 +99,7 @@ export const WEEKLY_PLAN_PREMISE =
 // Add something to make the first week special/specific to the client
 // Consider adding the Atomic Habits cheat sheet here or in the per-week-breakdown
 
-export const TEMPLATE_FOR_WEEKLY_PLAN_REQUEST = new PromptTemplate({
+export const TEMPLATE_FOR_COACHING_PROGRAM_REQUEST = new PromptTemplate({
   template:
     '{premise}\nClient Messages:\n###{internal_data}###\nAction Plan:\n"""\n{external_data}\n"""',
   inputVariables: [
