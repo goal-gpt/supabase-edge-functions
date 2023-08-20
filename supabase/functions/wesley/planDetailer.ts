@@ -32,19 +32,20 @@ async function handleRequest(
   wesleyRequest: WesleyRequest,
 ) {
   console.log("Handling request:", wesleyRequest);
-  const { messages, plan, userName } = wesleyRequest;
+  const { messages, plan: actionPlan, userName } = wesleyRequest;
+  console.log("Action plan:", actionPlan);
 
   const coachingProgramRequestMessage = await _llmInternals.getSystemMessage(
     TEMPLATE_FOR_COACHING_PROGRAM_REQUEST,
     COACHING_PROGRAM_PREMISE,
     messages,
     JSON.stringify({
-      goal: plan.goal,
+      goal: actionPlan.goal,
       steps: [{
-        number: plan.steps[0].number,
-        name: plan.steps[0].action.name,
-        description: plan.steps[0].action.description,
-        ideas: plan.steps[0].action.ideas,
+        number: actionPlan.steps[0].number,
+        name: actionPlan.steps[0].action.name,
+        description: actionPlan.steps[0].action.description,
+        ideas: actionPlan.steps[0].action.ideas,
       }],
     }),
   );
@@ -65,30 +66,30 @@ async function handleRequest(
     program,
   );
 
-  const assignmentRequest = new SystemChatMessage(
+  const distributionRequest = new SystemChatMessage(
     `You are an AI financial coach. You have prepared an outline of the first week of a financial coaching program, delimited by """. The plan will be followed by someone who has never done any of the tasks in the plan before. Your task is to: ` +
       `1. Distribute 6 hours across the tasks in the plan. Tasks can have from 30 minutes to 2 hours. ` +
       `2. Give detailed instructions about how to complete each task within the time alotted to the task. ` +
       `\nPlan: \n"""${program}"""\n`,
   );
   console.log(
-    "Calling OpenAI to get the program with assignments",
-    assignmentRequest,
+    "Calling OpenAI to get the program with time distributions",
+    distributionRequest,
   );
-  const assignmentRequestResponse = await _llmInternals.getChatCompletion(
+  const distributionRequestResponse = await _llmInternals.getChatCompletion(
     modelsContext.chat,
-    [assignmentRequest],
+    [distributionRequest],
   );
-  const assignments = assignmentRequestResponse.text;
+  const programWithTimes = distributionRequestResponse.text;
   console.log(
-    "Response from OpenAI to program assignment request: ",
-    assignments,
+    "Response from OpenAI to time distribution request: ",
+    programWithTimes,
   );
 
   const suggestedResources = await getContentItemsForPlan(
     modelsContext.embed,
     supabaseClient,
-    assignments,
+    programWithTimes,
     4, // threshold of content items to return; 4 is semi-arbitrary, as 1 less than 5 (the number of weekdays)
   );
   console.log(
@@ -107,7 +108,7 @@ async function handleRequest(
     WEEKLY_EMAIL_PREMISE,
     JSON.stringify({
       clientName: userName || "friend",
-      program: assignments,
+      program: programWithTimes,
       suggestedResources: {
         usageNote:
           "We've curated a selection of resources for you. Even if some don't seem relevant to your goal, we encourage you to give them a try 🙂",
@@ -116,8 +117,8 @@ async function handleRequest(
       motivationalQuote: motivationalQuote,
     }),
     JSON.stringify({
-      goal: plan.goal,
-      steps: plan.steps.map((step) => ({
+      goal: actionPlan.goal,
+      steps: actionPlan.steps.map((step) => ({
         number: step.number,
         name: step.action.name,
       })),
@@ -170,7 +171,7 @@ async function handleRequest(
     body: JSON.stringify({
       from: "info@eras.fyi",
       to: "info@eras.fyi",
-      subject: `Welcome to eras 🌅`,
+      subject: "Welcome to eras 🌅",
       html: cleanedWeeklyEmail,
     }),
   });
