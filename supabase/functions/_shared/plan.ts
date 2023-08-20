@@ -78,70 +78,12 @@ export const COACHING_PROGRAM_PREMISE =
   `1. Read the messages from the client, delimited by ###. ` +
   `2. Read the action plan for the client, delimited by """. ` +
   `3. Create a list of titles for 4 tasks for the client to complete in the first week to make progress on the action plan. ` +
-  // `a. The titles of 5 tasks for the client to do; ` +
-  // `b. Each task should be specific, measurable, and relevant; ` +
   `4. The outline should incorporate mindfulness. ` +
-  `5. The list should not include tasks that the client has already performed, based on the client's messages, delimited by ###.`;
-
-// Mindfulness information is AI summary of https://www.newretirement.com/retirement/money-mindfulness/
-export const _COACHING_PROGRAM_PREMISE =
-  `You are an empathetic, emotionally-aware, and imaginative AI financial coach. ` +
-  `Based on the messages from your client, delimited by ###, ` +
-  `you have already made an action plan for the client. The goal and the first step of the action plan are delimited by """. ` +
-  `Your client is motivated but has limited time and needs help establishing good financial habits.` +
-  `Create the first week of a 12-week program that consists of 5 tasks for the client to do ` +
-  `that will help the client to make progress towards completing the first step of the action plan. ` +
-  `Each task should be specific, measurable, and relevant. ` +
-  `The tasks should incorporate mindfulness: "Money mindfulness is the conscious practice of understanding and managing one's financial situation. This includes slowing down when making financial decisions, examining feelings about those decisions, and waiting 24 hours before making significant purchases. Mindfulness also involves regular financial planning, such as reading about personal finance, attending workshops, and taking online courses on budgeting, investing, and debt management. Being aware of emotions that can lead to risky or impulsive decisions, focusing on both short-term and long-term impacts, exploring personal financial biases, and seeking diverse perspectives are all essential to this approach. Regular self-check-ins and written observations can help create a secure financial future, and an open-minded approach can allow for a well-rounded understanding of financial options."` +
-  `The tasks should reflect the messages from the client—do not include tasks that the client has already performed. ` +
-  `Assume the client has no experience with any of the tasks. `;
-// `The total time required to complete all of the tasks should be less than 6 hours. ` +
-// `The client only has 6 hours available to work on the tasks.`;
-// `Return your response in the following format:` +
-// `Week 1: <title>\n` +
-// `- Task 1\n` +
-// `- Task 2\n` +
-// `- Task 3\n` +
-// `- Task 4\n` +
-// `\n` +
-// `...\n` +
-// `\n` +
-// `Week 12: <title>\n` +
-// `- Task 1\n` +
-// `- Task 2\n` +
-// `- Task 3\n` +
-// `- Task 4\n`;
-// Add something to make the first week special/specific to the client
-// Consider adding the Atomic Habits cheat sheet here or in the per-week-breakdown
+  `5. The list should not include tasks that the client has already performed, based on the client's messages.`;
 
 export const TEMPLATE_FOR_COACHING_PROGRAM_REQUEST = new PromptTemplate({
   template:
     '{premise}\nClient Messages:\n###{internal_data}###\nAction Plan:\n"""\n{external_data}\n"""',
-  inputVariables: [
-    "premise",
-    "internal_data",
-    "external_data",
-  ],
-});
-
-export const PLAN_FOR_THE_WEEK_PREMISE =
-  `You are an empathetic, emotionally-aware, and imaginative AI coaching app called "eras". ` +
-  `You have already prepared a personalized 12-week program for a client. ` +
-  `Your task is to perform the following actions: ` +
-  `1. Rewrite suggestions in any activities that mention specific products, apps, platforms, or companies (like the budgeting apps "Mint" and "YNAB") to be generic. ` +
-  `2. Add 1-2 activities to Week 1 of the program, delimited by ###, that are very specific to the client's goal, delimited by """. ` +
-  `3. Rewrite Week 1 of the program to tell the client what they should do on day 1, day 2, etc. ` +
-  `4. Revise Week 1 of the program so that it is not overwhelming. ` +
-  `Do not make up any content, communities, or other resources. ` +
-  `Do not suggest that the client read, watch, listen to, follow, enroll in, or participate in any content, communities, or other resources that are made up. ` +
-  `Do not suggest any specific content, communities, or other resources. ` +
-  `Do not suggest that the client read, watch, listen to, follow, enroll in, or participate in multiple content, communities, or other resources in a single activity; for example, say "Read a book about <topic>" instead of "Read books about <topic>", say "Continue reading the book about <topic>" instead of "Continue reading books about <topic>", and say "Join an online forum" instead of "Join online forums".` +
-  `Do not suggest reading more than 1 book per week. ` +
-  `Do not name any specific products, apps, platforms, or companies. Do not mention Mint or YNAB.`;
-
-export const TEMPLATE_FOR_PLAN_FOR_THE_WEEK_REQUEST = new PromptTemplate({
-  template:
-    '{premise}\nWeek 1:\n###{internal_data}###\nClient\'s Goal:\n"""\n{external_data}\n"""',
   inputVariables: [
     "premise",
     "internal_data",

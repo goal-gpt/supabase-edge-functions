@@ -38,7 +38,19 @@ Deno.test("handleRequest", async (t) => {
     messages: messages,
     plan: {
       goal: goal,
-      steps: [],
+      steps: [{
+        number: 1,
+        action: {
+          name: "Action Name",
+          description: "Action Description",
+          ideas: {
+            mostObvious: "mostObvious",
+            leastObvious: "leastObvious",
+            inventiveOrImaginative: "inventiveOrImaginative",
+            rewardingOrSustainable: "rewardingOrSustainable",
+          },
+        },
+      }],
     },
     userName: "Jane",
   };
