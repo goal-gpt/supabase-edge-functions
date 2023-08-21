@@ -36,7 +36,7 @@ Deno.test("handleRequest", async (t) => {
   const goal = "Improve financial well-being.";
   const wesleyRequest = {
     messages: messages,
-    actionPlan: {
+    plan: {
       goal: goal,
       steps: [{
         number: 1,
