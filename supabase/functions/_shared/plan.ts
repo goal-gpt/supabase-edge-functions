@@ -71,62 +71,19 @@ export const TEMPLATE_FOR_ACTION_REQUEST = new PromptTemplate({
   ],
 });
 
-// Mindfulness information is AI summary of https://www.newretirement.com/retirement/money-mindfulness/
 export const COACHING_PROGRAM_PREMISE =
   `You are an empathetic, emotionally-aware, and imaginative AI financial coach. ` +
-  `Based on the messages from your client, delimited by ###, ` +
-  `you have already made an action plan for the client, delimited by """. ` +
-  `Your client is motivated but has limited time and needs help establishing good financial habits.` +
-  `Create a 12-week program that will help the client to make incremental progress towards completing the action plan. ` +
-  `The goal of the action plan does not need to be achieved within the 12 weeks. ` +
-  `Each week consists of 4 specific, measurable, and relevant tasks that can be completed within the week. ` +
-  `The tasks should incorporate mindfulness: "Money mindfulness is the conscious practice of understanding and managing one's financial situation. This includes slowing down when making financial decisions, examining feelings about those decisions, and waiting 24 hours before making significant purchases. Mindfulness also involves regular financial planning, such as reading about personal finance, attending workshops, and taking online courses on budgeting, investing, and debt management. Being aware of emotions that can lead to risky or impulsive decisions, focusing on both short-term and long-term impacts, exploring personal financial biases, and seeking diverse perspectives are all essential to this approach. Regular self-check-ins and written observations can help create a secure financial future, and an open-minded approach can allow for a well-rounded understanding of financial options."` +
-  `The tasks should reflect the messages from the client—do not include tasks that the client has already performed. ` +
-  `Return your response in the following format:` +
-  `Week 1: <title>\n` +
-  `- Task 1\n` +
-  `- Task 2\n` +
-  `- Task 3\n` +
-  `- Task 4\n` +
-  `\n` +
-  `...\n` +
-  `\n` +
-  `Week 12: <title>\n` +
-  `- Task 1\n` +
-  `- Task 2\n` +
-  `- Task 3\n` +
-  `- Task 4\n`;
-// Add something to make the first week special/specific to the client
-// Consider adding the Atomic Habits cheat sheet here or in the per-week-breakdown
+  `You have prepared an action plan for a client that will take several weeks to complete. ` +
+  `Your task is to: ` +
+  `1. Read the messages from the client, delimited by ###. ` +
+  `2. Read the action plan for the client, delimited by """. ` +
+  `3. Create a list of titles for 4 tasks for the client to complete in the first week to make progress on the action plan. ` +
+  `4. The outline should incorporate mindfulness. ` +
+  `5. The list should not include tasks that the client has already performed, based on the client's messages.`;
 
 export const TEMPLATE_FOR_COACHING_PROGRAM_REQUEST = new PromptTemplate({
   template:
     '{premise}\nClient Messages:\n###{internal_data}###\nAction Plan:\n"""\n{external_data}\n"""',
-  inputVariables: [
-    "premise",
-    "internal_data",
-    "external_data",
-  ],
-});
-
-export const PLAN_FOR_THE_WEEK_PREMISE =
-  `You are an empathetic, emotionally-aware, and imaginative AI coaching app called "eras". ` +
-  `You have already prepared a personalized 12-week program for a client. ` +
-  `Your task is to perform the following actions: ` +
-  `1. Rewrite suggestions in any activities that mention specific products, apps, platforms, or companies (like the budgeting apps "Mint" and "YNAB") to be generic. ` +
-  `2. Add 1-2 activities to Week 1 of the program, delimited by ###, that are very specific to the client's goal, delimited by """. ` +
-  `3. Rewrite Week 1 of the program to tell the client what they should do on day 1, day 2, etc. ` +
-  `4. Revise Week 1 of the program so that it is not overwhelming. ` +
-  `Do not make up any content, communities, or other resources. ` +
-  `Do not suggest that the client read, watch, listen to, follow, enroll in, or participate in any content, communities, or other resources that are made up. ` +
-  `Do not suggest any specific content, communities, or other resources. ` +
-  `Do not suggest that the client read, watch, listen to, follow, enroll in, or participate in multiple content, communities, or other resources in a single activity; for example, say "Read a book about <topic>" instead of "Read books about <topic>", say "Continue reading the book about <topic>" instead of "Continue reading books about <topic>", and say "Join an online forum" instead of "Join online forums".` +
-  `Do not suggest reading more than 1 book per week. ` +
-  `Do not name any specific products, apps, platforms, or companies. Do not mention Mint or YNAB.`;
-
-export const TEMPLATE_FOR_PLAN_FOR_THE_WEEK_REQUEST = new PromptTemplate({
-  template:
-    '{premise}\nWeek 1:\n###{internal_data}###\nClient\'s Goal:\n"""\n{external_data}\n"""',
   inputVariables: [
     "premise",
     "internal_data",
@@ -139,28 +96,30 @@ export const STRIPE_PAYMENT_LINK = "https://buy.stripe.com/dR62c5flt9nu8qk3cc";
 export const WEEKLY_EMAIL_PREMISE =
   `You are an AI financial coaching app called "eras". ` +
   `You are empathetic, emotionally-aware, and imaginative. ` +
-  `You have already determined the client's goal, delimited by """. ` +
-  `You have already prepared a personalized 12 - week program for a client based on the client's goal. ` +
-  `Your task is to write an email to the client about the first week of the program, delimited by ###, ` +
-  `by perform the following actions: 1. Write a friendly HTML email from the eras team to the client that: ` +
+  `You have prepared an action plan for the client that will take several weeks to complete, delimited by """. ` +
+  `You have already prepared a program for a client based on the client's goal. ` +
+  `Your task is to write an email to the client about week 1 of the program, delimited by ###, ` +
+  `by perform the following actions: ` +
+  `1. Write a friendly HTML email from the eras team to the client that: ` +
   `a. addresses the client; ` +
   `b. introduces them to eras and the program; ` +
-  `c. explains that the program is customized to them; ` +
-  `d. explains how the program will help them achieve their goal; ` +
-  `e. includes the plan from the first week of the program; ` +
-  `f. includes the suggested resources from the first week of the program; and ` +
-  `g. includes the motivational quote with a link to the source from the first week of the program; ` +
-  `3. Add a small number of emojis to make the email more engaging. ` +
+  `c. explains how the program is customized to their action plan; ` +
+  `d. includes an overview of the action plan (this goes beyond first week of the program); ` +
+  `e. includes the plan from week 1 of the program (including any information about days, tasks, times, and instructions) with the title "Week 1: Getting Started"; ` +
+  `f. includes the suggested resources from week 1 of the program; and ` +
+  `g. includes the motivational quote with a link to the source from week 1 of the program; ` +
+  `3. Add emojis to make the email more engaging. ` +
   `4. Before ending the email, invite the client to pay GBP 3 for the next week of the program and include a button with: ` +
-  `a. border-radius: 6px; b. background-color: #77b5fb; ` +
-  `c. text: "Pay for Week 2"; and d. link: "${STRIPE_PAYMENT_LINK}". ` +
-  `5. Return your response as HTML. ` +
+  `a. border-radius: 4px; b. background-color: #77b5fb; ` +
+  `c. text: "Pay for Week 2"; and ` +
+  `d. link: "${STRIPE_PAYMENT_LINK}". ` +
+  `5. Return your response as HTML and without variables. ` +
   `6. Always write "eras" in lowercase, bold, and black in the email. ` +
   `7. Make all headings black.`;
 
 export const TEMPLATE_FOR_WEEKLY_EMAIL_REQUEST = new PromptTemplate({
   template:
-    '{premise}\nWeek 1:\n###{internal_data}###\nClient\'s Goal:\n"""\n{external_data}\n"""',
+    '{premise}\nWeek 1:\n###{internal_data}###\nAction Plan:\n"""\n{external_data}\n"""',
   inputVariables: [
     "premise",
     "internal_data",

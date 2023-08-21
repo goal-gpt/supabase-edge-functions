@@ -2,14 +2,12 @@ import {
   _internals as _llmInternals,
   ModelsContext,
   OpenAIEmbeddings,
+  SystemChatMessage,
 } from "../_shared/llm.ts";
 import {
   COACHING_PROGRAM_PREMISE,
-  Plan,
-  PLAN_FOR_THE_WEEK_PREMISE,
   STRIPE_PAYMENT_LINK,
   TEMPLATE_FOR_COACHING_PROGRAM_REQUEST,
-  TEMPLATE_FOR_PLAN_FOR_THE_WEEK_REQUEST,
   TEMPLATE_FOR_WEEKLY_EMAIL_REQUEST,
   WEEKLY_EMAIL_PREMISE,
 } from "../_shared/plan.ts";
@@ -34,16 +32,22 @@ async function handleRequest(
   wesleyRequest: WesleyRequest,
 ) {
   console.log("Handling request:", wesleyRequest);
-  const { messages, plan, userName } = wesleyRequest;
-
-  // Remove raw links to reduce size and scope of what is sent to OpenAI
-  emptyRawLinks(plan);
+  const { messages, plan: actionPlan, userName } = wesleyRequest;
+  console.log("Action plan:", actionPlan);
 
   const coachingProgramRequestMessage = await _llmInternals.getSystemMessage(
     TEMPLATE_FOR_COACHING_PROGRAM_REQUEST,
     COACHING_PROGRAM_PREMISE,
     messages,
-    JSON.stringify(plan),
+    JSON.stringify({
+      goal: actionPlan.goal,
+      steps: [{
+        number: actionPlan.steps[0].number,
+        name: actionPlan.steps[0].action.name,
+        description: actionPlan.steps[0].action.description,
+        ideas: actionPlan.steps[0].action.ideas,
+      }],
+    }),
   );
 
   console.log(
@@ -62,35 +66,30 @@ async function handleRequest(
     program,
   );
 
-  const firstWeek = program.substring(0, program.indexOf("Week 2"));
-
-  const planForTheWeekRequestMessage = await _llmInternals.getSystemMessage(
-    TEMPLATE_FOR_PLAN_FOR_THE_WEEK_REQUEST,
-    PLAN_FOR_THE_WEEK_PREMISE,
-    firstWeek,
-    plan.goal,
+  const distributionRequest = new SystemChatMessage(
+    `You are an AI financial coach. You have prepared an outline of the first week of a financial coaching program, delimited by """. The plan will be followed by someone who has never done any of the tasks in the plan before. Your task is to: ` +
+      `1. Distribute 6 hours across the tasks in the plan. Tasks can have from 30 minutes to 2 hours. ` +
+      `2. Give detailed instructions about how to complete each task within the time alotted to the task. ` +
+      `\nPlan: \n"""${program}"""\n`,
   );
-
   console.log(
-    "Calling OpenAI to get the plan for the week",
-    planForTheWeekRequestMessage,
+    "Calling OpenAI to get the program with time distributions",
+    distributionRequest,
   );
-
-  const planForTheWeekRequestResponse = await _llmInternals.getChatCompletion(
+  const distributionRequestResponse = await _llmInternals.getChatCompletion(
     modelsContext.chat,
-    [planForTheWeekRequestMessage],
+    [distributionRequest],
   );
-  const planForTheWeek = planForTheWeekRequestResponse.text;
-
+  const programWithTimes = distributionRequestResponse.text;
   console.log(
-    "Response from OpenAI to plan for the week request: ",
-    planForTheWeek,
+    "Response from OpenAI to time distribution request: ",
+    programWithTimes,
   );
 
   const suggestedResources = await getContentItemsForPlan(
     modelsContext.embed,
     supabaseClient,
-    planForTheWeek,
+    programWithTimes,
     4, // threshold of content items to return; 4 is semi-arbitrary, as 1 less than 5 (the number of weekdays)
   );
   console.log(
@@ -109,11 +108,21 @@ async function handleRequest(
     WEEKLY_EMAIL_PREMISE,
     JSON.stringify({
       clientName: userName || "friend",
-      plan: planForTheWeek,
-      suggestedResources: suggestedResources,
+      program: programWithTimes,
+      suggestedResources: {
+        usageNote:
+          "We've curated a selection of resources for you. Even if some don't seem relevant to your goal, we encourage you to give them a try 🙂",
+        resources: suggestedResources,
+      },
       motivationalQuote: motivationalQuote,
     }),
-    plan.goal,
+    JSON.stringify({
+      goal: actionPlan.goal,
+      steps: actionPlan.steps.map((step) => ({
+        number: step.number,
+        name: step.action.name,
+      })),
+    }),
   );
 
   const suggestedResourcesLinks = suggestedResources.map((resource) =>
@@ -219,6 +228,8 @@ function validateWeeklyEmail(
   ) => isExpectedStringPresentOnlyOnce(weeklyEmail, expectedString));
   console.log("allExpectedStringsPresent: ", allExpectedStringsPresent);
 
+  if (!allExpectedStringsPresent) return allExpectedStringsPresent;
+
   // Confirming that no bad strings are present
   console.log("Confirming that no bad strings are present...");
 
@@ -230,14 +241,20 @@ function validateWeeklyEmail(
     "https://",
     "http://",
     "week 3", // TODO: make dynamic based on the week
+    "mailto:",
   ];
-  const noBadStringsFound = badStrings.every((badString) =>
-    !weeklyEmailWithoutExpectedStrings.includes(badString)
-  );
+  const noBadStringsFound = badStrings.every((badString) => {
+    const isNotFound = !weeklyEmailWithoutExpectedStrings.includes(badString);
+    console.log(`"${badString}" is not found: ${isNotFound}`);
+
+    return isNotFound;
+  });
 
   console.log("noBadStringsFound: ", noBadStringsFound);
 
-  return allExpectedStringsPresent && noBadStringsFound;
+  if (!noBadStringsFound) return noBadStringsFound;
+
+  return true;
 }
 
 function isExpectedStringPresentOnlyOnce(
@@ -277,15 +294,6 @@ function cleanWeeklyEmail(weeklyEmail: string): string {
   );
 
   return withoutTripleBackticks;
-}
-
-function emptyRawLinks(plan: Plan): void {
-  console.log("Emptying raw links...");
-  plan.steps.forEach((step) => {
-    if (step.action.rawLinks) {
-      step.action.rawLinks = [];
-    }
-  });
 }
 
 // _internals are used for testing

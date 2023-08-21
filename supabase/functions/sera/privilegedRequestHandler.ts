@@ -178,7 +178,9 @@ function sendPlanToWesley(
   plan: Plan,
 ) {
   console.log("Sending plan to Wesley");
-  const messages = baseChatMessages.map((v) => v.text).join("; ");
+  const messages = baseChatMessages.map((v) => {
+    if (v._getType() === "human") return v.text;
+  }).join("; ");
 
   supabaseClient.functions.invoke("wesley", {
     body: JSON.stringify({ messages: messages, plan: plan }),
