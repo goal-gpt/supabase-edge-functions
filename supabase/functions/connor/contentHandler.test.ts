@@ -22,7 +22,7 @@ const sinon = sinonImport.createSandbox();
 
 Deno.test("scrapeAndSaveLink function", async (t) => {
   const html =
-    "<html><head><title>Test Title</title></head><body>Here is some financial guidance.<script>Test script text</script><noscript>Test noscript text</noscript><style>Test style text</style></body></html>";
+    "<html><head><title>Test Title</title></head><body>Here is some guidance.<script>Test script text</script><noscript>Test noscript text</noscript><style>Test style text</style></body></html>";
   await t.step("scrapes and saves content with link input", async () => {
     const textStub = stub(
       Response.prototype,
@@ -66,7 +66,7 @@ Deno.test("scrapeAndSaveLink function", async (t) => {
       {
         link: url,
         title: title,
-        raw_content: "Here is some financial guidance.",
+        raw_content: "Here is some guidance.",
         shareable: true,
         user_id: userId,
         affiliate: false,

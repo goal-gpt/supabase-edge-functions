@@ -67,9 +67,10 @@ async function handleRequest(
   );
 
   const distributionRequest = new SystemChatMessage(
-    `You are an AI financial coach. You have prepared an outline of the first week of a financial coaching program, delimited by """. The plan will be followed by someone who has never done any of the tasks in the plan before. Your task is to: ` +
+  `You are an AI coach. ` +
+      `You have prepared an outline of the first week of a coaching program, delimited by """. The plan will be followed by someone who has never done any of the tasks in the plan before. Your task is to: ` +
       `1. Distribute 6 hours across the tasks in the plan. Tasks can have from 30 minutes to 2 hours. ` +
-      `2. Give detailed instructions about how to complete each task within the time alotted to the task. ` +
+      `2. Give instructions about how to complete each task within the time alotted to the task. ` +
       `\nPlan: \n"""${program}"""\n`,
   );
   console.log(
@@ -86,10 +87,12 @@ async function handleRequest(
     programWithTimes,
   );
 
+  // TODO: (1) ask AI to extract product names from the program and (2) use Resend to send that in an email to info@eras as an affiliates to add
+
   const suggestedResources = await getContentItemsForPlan(
     modelsContext.embed,
     supabaseClient,
-    programWithTimes,
+    `clientMessages: ${messages}, goal: ${actionPlan.goal}, program: ${programWithTimes}`,
     4, // threshold of content items to return; 4 is semi-arbitrary, as 1 less than 5 (the number of weekdays)
   );
   console.log(
