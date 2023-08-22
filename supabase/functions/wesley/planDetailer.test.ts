@@ -32,8 +32,8 @@ Deno.test("handleRequest", async (t) => {
     splitter: splitterStub,
   };
   const supabaseClientStub = sinon.createStubInstance(SupabaseClient);
-  const messages = "I would like to improve my financial well-being.";
-  const goal = "Improve financial well-being.";
+  const messages = "I would like to improve my well-being.";
+  const goal = "Improve well-being.";
   const wesleyRequest = {
     messages: messages,
     plan: {
