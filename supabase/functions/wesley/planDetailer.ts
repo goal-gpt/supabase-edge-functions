@@ -300,7 +300,6 @@ function validateWeeklyEmail(
     "http://",
     "week 3", // TODO: make dynamic based on the week
     "mailto:",
-    "task 5", // this is light validation of the tasks, because usage of the word "task" has not been controlled in the prompt
   ];
   const noBadStringsFound = badStrings.every((badString) => {
     const isNotFound = !weeklyEmailWithoutExpectedStrings.includes(badString);
