@@ -1,5 +1,6 @@
 import {
   _internals as _llmInternals,
+  ChatOpenAI,
   ModelsContext,
   OpenAIEmbeddings,
   SystemChatMessage,
@@ -18,6 +19,13 @@ import {
   SupabaseClient,
 } from "../_shared/supabaseClient.ts";
 import { Database } from "../../types/supabase.ts";
+
+interface ResendEmailOptions {
+  to: string | string[];
+  bcc?: string | string[];
+  subject: string;
+  html: string;
+}
 
 export const MOTIVATIONAL_quote =
   "Every action you take is a vote for the person you wish to become.";
@@ -67,7 +75,7 @@ async function handleRequest(
   );
 
   const distributionRequest = new SystemChatMessage(
-  `You are an AI coach. ` +
+    `You are an AI coach. ` +
       `You have prepared an outline of the first week of a coaching program, delimited by """. The plan will be followed by someone who has never done any of the tasks in the plan before. Your task is to: ` +
       `1. Distribute 6 hours across the tasks in the plan. Tasks can have from 30 minutes to 2 hours. ` +
       `2. Give instructions about how to complete each task within the time alotted to the task. ` +
@@ -142,41 +150,30 @@ async function handleRequest(
       JSON.stringify(runtimeExpectedStrings, null, 2)
     }`,
   );
-  console.log(
-    "Calling OpenAI to get the weekly email",
-    weeklyEmailRequestMessage,
-  );
 
-  const weeklyEmailRequestResponse = await _llmInternals.getChatCompletion(
+  const weeklyEmail = await getWeeklyEmailToSend(
     modelsContext.chat,
-    [weeklyEmailRequestMessage],
+    weeklyEmailRequestMessage,
+    runtimeExpectedStrings,
   );
-  const weeklyEmail = weeklyEmailRequestResponse.text;
-  console.log(
-    "Response from OpenAI to weekly email request: ",
-    weeklyEmail,
-  );
+  const weeklyEmailOptions = {
+    to: "info@eras.fyi",
+    subject: `Welcome to eras 🌅 (${Date.now()})`,
+    html: weeklyEmail,
+  };
 
-  if (!validateWeeklyEmail(weeklyEmail, runtimeExpectedStrings)) {
-    // TODO: determine whether to automatically retry when the weekly email is invalid
-    throw new Error("Invalid weekly email");
-  }
+  await sendEmail(weeklyEmailOptions);
+}
 
-  const cleanedWeeklyEmail = cleanWeeklyEmail(weeklyEmail);
-
-  console.log("Sending weekly email to Resend...");
+async function sendEmail(options: ResendEmailOptions) {
+  console.log("Sending email to Resend...");
   const resendResponse = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${Deno.env.get("RESEND_API_KEY")}`,
     },
-    body: JSON.stringify({
-      from: "info@eras.fyi",
-      to: "info@eras.fyi",
-      subject: "Welcome to eras 🌅",
-      html: cleanedWeeklyEmail,
-    }),
+    body: JSON.stringify({ from: "info@eras.fyi", ...options }),
   });
 
   const data = await resendResponse.json();
@@ -210,34 +207,92 @@ async function getContentItemsForPlan(
   return contentItems;
 }
 
+async function getWeeklyEmailToSend(
+  chatModel: ChatOpenAI,
+  weeklyEmailRequestMessage: SystemChatMessage,
+  runtimeExpectedStrings: string[],
+  attempt = 1,
+): Promise<string> {
+  try {
+    console.log(`Attempt ${attempt} to get a valid weekly email...`);
+    console.log(
+      "Calling OpenAI to get the weekly email",
+      weeklyEmailRequestMessage,
+    );
+
+    const weeklyEmailRequestResponse = await _llmInternals.getChatCompletion(
+      chatModel,
+      [weeklyEmailRequestMessage],
+    );
+    const weeklyEmail = weeklyEmailRequestResponse.text;
+    console.log(
+      "Response from OpenAI to weekly email request: ",
+      weeklyEmail,
+    );
+
+    if (!validateWeeklyEmail(weeklyEmail, runtimeExpectedStrings)) {
+      // TODO: determine whether to automatically retry when the weekly email is invalid
+      throw new Error("Invalid weekly email");
+    }
+
+    return cleanWeeklyEmail(weeklyEmail);
+  } catch (error) {
+    const validationErrorMessage =
+      `Error occurred in attempt ${attempt}: ${error.message}`;
+    console.error(validationErrorMessage);
+    if (attempt < 3) {
+      console.log("Retrying...");
+
+      return await getWeeklyEmailToSend(
+        chatModel,
+        weeklyEmailRequestMessage,
+        runtimeExpectedStrings,
+        attempt + 1,
+      );
+    } else {
+      // Send notification email to info@eras.fyi
+      const error = new Error(
+        `Max retries reached. Failed to get a valid weekly email. ${validationErrorMessage}`,
+      );
+      const options = {
+        to: "info@eras.fyi",
+        subject: "Error - Wesley: Failed to get a valid weekly email",
+        html: `<p>${error.message}</p>`,
+      };
+
+      await sendEmail(options);
+      throw error;
+    }
+  }
+}
+
 function validateWeeklyEmail(
   weeklyEmail: string,
   runtimeExpectedStrings: string[],
 ): boolean {
   console.log("Validating the weekly email...");
+  const lowercaseWeeklyEmail = weeklyEmail.toLowerCase();
 
   const expectedStrings = [
     "<html>",
     "</html>",
     STRIPE_PAYMENT_LINK,
     ...runtimeExpectedStrings,
-  ];
+  ].map((s) => s.toLowerCase());
 
-  // Confirming that each expected string appears exactly once
-  console.log("Confirming that each expected string appears exactly once...");
+  console.log("Confirming that all expected strings are present...");
 
-  const allExpectedStringsPresent: boolean = expectedStrings.every((
-    expectedString,
-  ) => isExpectedStringPresentOnlyOnce(weeklyEmail, expectedString));
-  console.log("allExpectedStringsPresent: ", allExpectedStringsPresent);
+  const expectedStringPresent: boolean = expectedStrings.every((
+    s,
+  ) => isExpectedStringPresentOnlyOnce(lowercaseWeeklyEmail, s));
+  console.log("All expected strings are present: ", expectedStringPresent);
 
-  if (!allExpectedStringsPresent) return allExpectedStringsPresent;
+  if (!expectedStringPresent) return expectedStringPresent;
 
-  // Confirming that no bad strings are present
   console.log("Confirming that no bad strings are present...");
 
   const weeklyEmailWithoutExpectedStrings = removeStringsFromWeeklyEmail(
-    weeklyEmail,
+    lowercaseWeeklyEmail,
     expectedStrings,
   );
   const badStrings = [
@@ -245,6 +300,7 @@ function validateWeeklyEmail(
     "http://",
     "week 3", // TODO: make dynamic based on the week
     "mailto:",
+    "task 5", // this is light validation of the tasks, because usage of the word "task" has not been controlled in the prompt
   ];
   const noBadStringsFound = badStrings.every((badString) => {
     const isNotFound = !weeklyEmailWithoutExpectedStrings.includes(badString);
@@ -253,7 +309,7 @@ function validateWeeklyEmail(
     return isNotFound;
   });
 
-  console.log("noBadStringsFound: ", noBadStringsFound);
+  console.log("No bad strings found: ", noBadStringsFound);
 
   if (!noBadStringsFound) return noBadStringsFound;
 
@@ -264,10 +320,10 @@ function isExpectedStringPresentOnlyOnce(
   weeklyEmail: string,
   expectedString: string,
 ): boolean {
-  const lowerWeeklyEmail = weeklyEmail.toLowerCase();
-  const lowerExpectedString = expectedString.toLowerCase();
-  const regex = new RegExp(lowerExpectedString, "g");
-  const matches = lowerWeeklyEmail.match(regex);
+  // const lowerWeeklyEmail = weeklyEmail.toLowerCase();
+  // const lowerExpectedString = expectedString.toLowerCase();
+  const regex = new RegExp(expectedString, "g");
+  const matches = weeklyEmail.match(regex);
 
   const isPresentOnlyOnce = (!matches || matches.length != 1) ? false : true;
 

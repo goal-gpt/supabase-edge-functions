@@ -113,7 +113,7 @@ export const WEEKLY_EMAIL_PREMISE = `You are an AI coach. ` +
   `4. Return your response as HTML. ` +
   `5. Always write "eras" in lowercase, bold, and black in the email. ` +
   `6. Make all headings black.` +
-  `7. Add emojis to make the email more engaging. `;
+  `7. Add emojis to each heading and section to make the email more engaging. `;
 
 export const TEMPLATE_FOR_WEEKLY_EMAIL_REQUEST = new PromptTemplate({
   template:
