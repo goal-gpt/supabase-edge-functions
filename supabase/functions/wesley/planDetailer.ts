@@ -158,7 +158,7 @@ async function handleRequest(
   );
   const weeklyEmailOptions = {
     to: "info@eras.fyi",
-    subject: `Welcome to eras 🌅 (${Date.now()})`,
+    subject: "Welcome to eras 🌅",
     html: weeklyEmail,
   };
 
