@@ -81,9 +81,14 @@ Deno.test("handleRequest", async (t) => {
       resolve(matchDocumentsResponse);
     },
   );
-  const resendResponse = new Response(JSON.stringify({ id: "abc123" }));
-  const resendResponsePromise = new Promise<Response>((resolve) => {
-    resolve(resendResponse);
+  const weeklyEmailResendResponse = new Response(JSON.stringify({ id: "abc123" }));
+  const weeklyEmailResendResponsePromise = new Promise<Response>((resolve) => {
+    resolve(weeklyEmailResendResponse);
+  });
+
+  const invalidEmailResendResponse = new Response(JSON.stringify({ id: "abc123" }));
+  const invalidEmailResendResponsePromise = new Promise<Response>((resolve) => {
+    resolve(invalidEmailResendResponse);
   });
 
   await t.step("sends a valid weekly email", async () => {
@@ -109,7 +114,7 @@ Deno.test("handleRequest", async (t) => {
     const fetchStub = stub(
       window,
       "fetch",
-      returnsNext([resendResponsePromise]),
+      returnsNext([weeklyEmailResendResponsePromise]),
     );
     await _planDetailerInternals.handleRequest(
       modelsContextStub,
@@ -122,39 +127,50 @@ Deno.test("handleRequest", async (t) => {
     fetchStub.restore();
   });
 
-  await t.step("throws if the weekly email is invalid", async () => {
-    const invalidHtmlEmail = `HTML Email:https://randomlink.com`;
-    const invalidHtmlEmailPromise = new Promise<AIChatMessage>((resolve) => {
-      resolve(new AIChatMessage(invalidHtmlEmail));
-    });
-    const getChatCompletionStub = stub(
-      _llmInternals,
-      "getChatCompletion",
-      returnsNext([
-        coachingProgramPromise,
-        planPromise,
-        invalidHtmlEmailPromise,
-      ]),
-    );
-    const embedAndGetSimilarDocumentsStub = stub(
-      _llmInternals,
-      "embedAndGetSimilarDocuments",
-      returnsNext([matchDocumentsResponsePromise]),
-    );
+  await t.step(
+    "throws if it cannot create a valid weekly email after 3 tries",
+    async () => {
+      const invalidHtmlEmail = `HTML Email:https://randomlink.com`;
+      const invalidHtmlEmailPromise = new Promise<AIChatMessage>((resolve) => {
+        resolve(new AIChatMessage(invalidHtmlEmail));
+      });
+      const getChatCompletionStub = stub(
+        _llmInternals,
+        "getChatCompletion",
+        returnsNext([
+          coachingProgramPromise,
+          planPromise,
+          invalidHtmlEmailPromise,
+          invalidHtmlEmailPromise,
+          invalidHtmlEmailPromise,
+        ]),
+      );
+      const embedAndGetSimilarDocumentsStub = stub(
+        _llmInternals,
+        "embedAndGetSimilarDocuments",
+        returnsNext([matchDocumentsResponsePromise]),
+      );
+      const fetchStub = stub(
+        window,
+        "fetch",
+        returnsNext([invalidEmailResendResponsePromise]),
+      );
 
-    await assertRejects(
-      async () => {
-        return await _planDetailerInternals.handleRequest(
-          modelsContextStub,
-          supabaseClientStub,
-          wesleyRequest,
-        );
-      },
-      Error,
-      "Invalid weekly email",
-    );
+      await assertRejects(
+        async () => {
+          return await _planDetailerInternals.handleRequest(
+            modelsContextStub,
+            supabaseClientStub,
+            wesleyRequest,
+          );
+        },
+        Error,
+        "Invalid weekly email",
+      );
 
-    getChatCompletionStub.restore();
-    embedAndGetSimilarDocumentsStub.restore();
-  });
+      getChatCompletionStub.restore();
+      embedAndGetSimilarDocumentsStub.restore();
+      fetchStub.restore();
+    },
+  );
 });
