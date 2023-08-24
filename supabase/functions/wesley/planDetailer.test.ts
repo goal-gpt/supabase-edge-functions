@@ -1,8 +1,8 @@
 import { assertRejects } from "testing/asserts.ts";
 import {
   _internals as _planDetailerInternals,
-  MOTIVATIONAL_link,
-  MOTIVATIONAL_quote,
+  MOTIVATIONAL_LINK,
+  MOTIVATIONAL_QUOTE,
 } from "./planDetailer.ts";
 import {
   _internals as _llmInternals,
@@ -81,19 +81,23 @@ Deno.test("handleRequest", async (t) => {
       resolve(matchDocumentsResponse);
     },
   );
-  const weeklyEmailResendResponse = new Response(JSON.stringify({ id: "abc123" }));
+  const weeklyEmailResendResponse = new Response(
+    JSON.stringify({ id: "abc123" }),
+  );
   const weeklyEmailResendResponsePromise = new Promise<Response>((resolve) => {
     resolve(weeklyEmailResendResponse);
   });
 
-  const invalidEmailResendResponse = new Response(JSON.stringify({ id: "abc123" }));
+  const invalidEmailResendResponse = new Response(
+    JSON.stringify({ id: "abc123" }),
+  );
   const invalidEmailResendResponsePromise = new Promise<Response>((resolve) => {
     resolve(invalidEmailResendResponse);
   });
 
   await t.step("sends a valid weekly email", async () => {
     const htmlEmail =
-      `<html>HTML Email: ${contentItem.link}${MOTIVATIONAL_quote}${MOTIVATIONAL_link}${STRIPE_PAYMENT_LINK}</html>`;
+      `<html>HTML Email: ${contentItem.link}${MOTIVATIONAL_QUOTE}${MOTIVATIONAL_LINK}${STRIPE_PAYMENT_LINK}</html>`;
     const htmlEmailPromise = new Promise<AIChatMessage>((resolve) => {
       resolve(new AIChatMessage(htmlEmail));
     });
