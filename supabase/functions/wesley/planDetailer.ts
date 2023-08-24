@@ -27,11 +27,11 @@ interface ResendEmailOptions {
   html: string;
 }
 
-export const MOTIVATIONAL_quote =
+export const MOTIVATIONAL_QUOTE =
   "Every action you take is a vote for the person you wish to become.";
-export const MOTIVATIONAL_speaker = "James Clear";
-export const MOTIVATIONAL_source = "Atomic Habits";
-export const MOTIVATIONAL_link =
+export const MOTIVATIONAL_SPEAKER = "James Clear";
+export const MOTIVATIONAL_SOURCE = "Atomic Habits";
+export const MOTIVATIONAL_LINK =
   "https://www.amazon.de/-/en/Atomic-Habits-life-changing-million-bestseller/dp/1847941834"; // TODO: get this from the database
 
 async function handleRequest(
@@ -109,10 +109,10 @@ async function handleRequest(
 
   // TODO: make this programmatic
   const motivationalQuote = {
-    quote: MOTIVATIONAL_quote,
-    speaker: MOTIVATIONAL_speaker,
-    source: MOTIVATIONAL_source,
-    link: MOTIVATIONAL_link,
+    quote: MOTIVATIONAL_QUOTE,
+    speaker: MOTIVATIONAL_SPEAKER,
+    source: MOTIVATIONAL_SOURCE,
+    link: MOTIVATIONAL_LINK,
   };
   const weeklyEmailRequestMessage = await _llmInternals.getSystemMessage(
     TEMPLATE_FOR_WEEKLY_EMAIL_REQUEST,
