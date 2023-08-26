@@ -92,7 +92,7 @@ export const TEMPLATE_FOR_COACHING_PROGRAM_REQUEST = new PromptTemplate({
 export const STRIPE_PAYMENT_LINK = "https://buy.stripe.com/dR62c5flt9nu8qk3cc";
 
 export const WEEKLY_EMAIL_PREMISE = `You are an AI coach. ` +
-  `You provide guidance, support, and actionable advice to help you set and achieve personal or professional goals. ` +
+  `You provide guidance, support, and actionable advice to help users set and achieve personal or professional goals. ` +
   `The guidance, support, and advice you provide are empathetic, emotionally-aware, imaginative, creative, and open-minded. ` +
   `You have prepared an action plan for the client that will take several weeks to complete, delimited by """. ` +
   `You have already prepared a program for a client based on the client's goal. ` +
@@ -118,6 +118,34 @@ export const WEEKLY_EMAIL_PREMISE = `You are an AI coach. ` +
 export const TEMPLATE_FOR_WEEKLY_EMAIL_REQUEST = new PromptTemplate({
   template:
     '{premise}\nWeek 1:\n###{internal_data}###\nAction Plan:\n"""\n{external_data}\n"""',
+  inputVariables: [
+    "premise",
+    "internal_data",
+    "external_data",
+  ],
+});
+
+export const REMINDER_EMAIL_PREMISE = `You are an AI coach called "eras". ` +
+  `You help users set and achieve personal or professional goals. ` +
+  `Your task is to: `+
+  `1. Prepare a friendly, motivational, empathetic, and concise HTML email from "the eras team" for the reminder, delimited below by ###, that:` +
+  `a. addresses the client; ` +
+  `b. reminds them to do the latest step of the current task; ` +
+  `c. reminds them that they do not have to complete the step all at once, but can do it incrementally; ` +
+  `d. asks them to reply all if they have already completed the step or if they have feedback on the email; and` +
+  `e. includes the motivational quote, delimited by """, with a link to the source. ` +
+  `2. Before ending the email, invite the client to subscribe to get the next week of coaching and include a button with: ` +
+  `a. border-radius: 4px; b. background-color: #77b5fb; c. display: inline-block; d. padding: 10px 20px; ` +
+  `b. text: "Subscribe"; and ` +
+  `c. link: "${STRIPE_PAYMENT_LINK}". ` +
+  `3. Return your response as HTML. ` +
+  `4. Always write "eras" in lowercase, bold, and black in the email. ` +
+  `5. Make all headings black.` +
+  `6. Add emojis to each heading and section to make the email more engaging. `;
+
+export const TEMPLATE_FOR_REMINDER_EMAIL_REQUEST = new PromptTemplate({
+  template:
+    '{premise}\nReminder:\n###{internal_data}###\nMotivational Quote:\n"""\n{external_data}\n"""',
   inputVariables: [
     "premise",
     "internal_data",
